@@ -7,3 +7,10 @@ controls-tutorial-mobile.jpg
 growing-city-mobile.jpg
 landmarks-mobile.jpg
 phase2-mobile.jpg
+android/.gradle/
+android/**/build/
+android/local.properties
+*.apk
+*.keystore
+*.jks
+phone-check.png

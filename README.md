@@ -4,7 +4,24 @@ A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The sup
 
 ## Run
 
-Requires Node.js 20 or newer. Run `npm start`, then open http://localhost:5173. On the same Wi-Fi, a phone can use `http://YOUR_PC_LAN_IP:5173` if the Windows firewall permits Node. This release is a browser game; no Android APK is included. Installation and offline caching require HTTPS or localhost.
+Requires Node.js 20 or newer. Run `npm start`, then open http://localhost:5173. On the same Wi-Fi, a phone can use `http://YOUR_PC_LAN_IP:5173` if the Windows firewall permits Node. Browser installation and offline caching require HTTPS or localhost. An offline Android app is also available through the `android/` project below.
+
+## Android app
+
+The Android app bundles the same game into an APK. Once installed, it runs without a PC server or network connection. It uses Java for the Android host and AndroidX WebViewAssetLoader for packaged HTTPS assets. There is no Internet permission. Local storage persists app progress; browser and app saves are separate. To transfer a city, export its JSON backup in the browser and import it through Customize inside the app. Android file pickers support importing and exporting backups without broad storage permissions.
+
+Build with JDK 17 or newer and Android SDK platform 35 installed:
+
+```sh
+cd android
+./gradlew assembleDebug
+```
+
+On Windows use `gradlew.bat assembleDebug`. Set `JAVA_HOME` and `ANDROID_HOME` to the installed JDK/SDK if necessary. The first build needs access to Google Maven, Maven Central and the Gradle distribution. Output: `android/app/build/outputs/apk/debug/app-debug.apk`. Install with `adb install -r PATH_TO_APK`; launch package `com.tollempire.game`. This is a debug-signed development APK, not a Play Store release. Keep the same signing identity when installing updates to preserve app data. Signing keys, build output and SDK paths are excluded from Git.
+
+Build tasks copy current root `index.html`, `src/` and `public/` into generated Android assets automatically, disabling the browser service worker inside that copy. The source tree remains shared. Backgrounding saves progress, and Android local storage survives force-stop/relaunch. The app supports Android 7.0/API 24 and newer with a current Android System WebView.
+
+Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
 
 ## Your first city
 
