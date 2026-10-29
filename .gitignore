@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.DS_Store
+*.zip
+# Previous visual QA captures remain local.
+controls-tutorial-mobile.jpg
+growing-city-mobile.jpg
+landmarks-mobile.jpg
+phase2-mobile.jpg
