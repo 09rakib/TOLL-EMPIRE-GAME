@@ -12,7 +12,7 @@ export class Renderer {
     this.resize();
   }
   resize(){const r=this.canvas.getBoundingClientRect();this.width=r.width;this.height=r.height;this.dpr=this.game.settings.lowPower?1:Math.min(devicePixelRatio||1,2);this.canvas.width=r.width*this.dpr;this.canvas.height=r.height*this.dpr;this.clamp();}
-  center(){this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera=this.game.mode==='planner'?{x:19.5*T,y:20.5*T,zoom:this.width<600?1.05:.95}:{x:19*T,y:19*T,zoom:this.width<600?.65:.72};this.clamp();}
+  center(){this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera=this.game.mode==='planner'?{x:19.5*T,y:20.5*T,zoom:this.width<600?.8:.85}:{x:19*T,y:19*T,zoom:this.width<600?.65:.72};this.clamp();}
   clamp(){const c=this.camera;const hx=Math.min(B.size*T/2,this.width/2/c.zoom),hy=Math.min(B.size*T/2,this.height/2/c.zoom);c.x=Math.max(hx,Math.min(B.size*T-hx,c.x));c.y=Math.max(hy,Math.min(B.size*T-hy,c.y));}
   screenToWorld(x,y){return {x:(x-this.width/2)/this.camera.zoom+this.camera.x,y:(y-this.height/2)/this.camera.zoom+this.camera.y};}
   tileAt(x,y){const w=this.screenToWorld(x,y);if(w.x<0||w.y<0||w.x>=B.size*T||w.y>=B.size*T)return -1;return id(Math.floor(w.x/T),Math.floor(w.y/T));}
@@ -37,12 +37,12 @@ export class Renderer {
       }
       if(type==='river'){
         c.fillStyle=theme.water;c.fillRect(px,py,T,T);c.fillStyle='#d4efed45';c.fillRect(px+5+(y%3)*7,py+13,23,2);c.fillRect(px+24,py+35,19,2);
-        for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){const a=x+dx,b=y+dy;if(a<0||b<0||a>=40||b>=40)continue;const t=tiles[id(a,b)];if(t!=='river'&&t!=='bridge'){c.fillStyle='#c9d6ae';if(dx===-1)c.fillRect(px,py,4,T);if(dx===1)c.fillRect(px+T-4,py,4,T);if(dy===-1)c.fillRect(px,py,T,4);if(dy===1)c.fillRect(px,py+T-4,T,4);}}
+        for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){const a=x+dx,b=y+dy;if(a<0||b<0||a>=B.size||b>=B.size)continue;const t=tiles[id(a,b)];if(t!=='river'&&t!=='bridge'){c.fillStyle='#c9d6ae';if(dx===-1)c.fillRect(px,py,4,T);if(dx===1)c.fillRect(px+T-4,py,4,T);if(dy===-1)c.fillRect(px,py,T,4);if(dy===1)c.fillRect(px,py+T-4,T,4);}}
       }
     }
     for(let y=0;y<B.size;y++)for(let x=0;x<B.size;x++){
       if(!isRoad(tiles[id(x,y)]))continue;
-      const px=x*T,py=y*T,road=(a,b)=>a>=0&&b>=0&&a<40&&b<40&&isRoad(tiles[id(a,b)]);
+      const px=x*T,py=y*T,road=(a,b)=>a>=0&&b>=0&&a<B.size&&b<B.size&&isRoad(tiles[id(a,b)]);
       const left=road(x-1,y),right=road(x+1,y),up=road(x,y-1),down=road(x,y+1);
       c.fillStyle='#d3d8c0';c.fillRect(px,py,T,T);c.fillStyle=this.game.settings.roadColor==='clay'?'#8a7b70':this.game.settings.roadColor==='midnight'?'#4d5e6a':tiles[id(x,y)]==='mainRoad'?'#5e6e72':'#707c7b';c.fillRect(px+5,py+5,T-10,T-10);
       if(left)c.fillRect(px,py+5,10,T-10);if(right)c.fillRect(px+T-10,py+5,10,T-10);if(up)c.fillRect(px+5,py,T-10,10);if(down)c.fillRect(px+5,py+T-10,T-10,10);
@@ -132,5 +132,5 @@ export class Renderer {
     const fade=c.createLinearGradient(0,0,0,Math.min(this.height*.45,260));fade.addColorStop(0,'#e9eed2b8');fade.addColorStop(.65,'#e9eed230');fade.addColorStop(1,'#e9eed200');c.fillStyle=fade;c.fillRect(0,0,this.width,260);
     this.drawMini();
   }
-  drawMini(){const c=this.mini.getContext('2d'),w=this.mini.width,h=this.mini.height;c.drawImage(this.terrain,0,0,w,h);for(const span of this.game.flyovers){const a=point(span.nodes[0]),b=point(span.nodes.at(-1));c.strokeStyle='#f1c861';c.lineWidth=2;c.beginPath();c.moveTo((a.x+.5)/B.size*w,(a.y+.5)/B.size*h);c.lineTo((b.x+.5)/B.size*w,(b.y+.5)/B.size*h);c.stroke();}c.strokeStyle='#fff9e7';c.lineWidth=2;const cam=this.camera;c.strokeRect((cam.x-this.width/2/cam.zoom)/(B.size*T)*w,(cam.y-this.height/2/cam.zoom)/(B.size*T)*h,this.width/cam.zoom/(B.size*T)*w,this.height/cam.zoom/(B.size*T)*h);for(const [n]of this.game.tolls){const p=point(n);c.fillStyle='#f7bd38';c.beginPath();c.arc(p.x/40*w,p.y/40*h,3,0,7);c.fill();}}
+  drawMini(){const c=this.mini.getContext('2d'),w=this.mini.width,h=this.mini.height;c.drawImage(this.terrain,0,0,w,h);for(const span of this.game.flyovers){const a=point(span.nodes[0]),b=point(span.nodes.at(-1));c.strokeStyle='#f1c861';c.lineWidth=2;c.beginPath();c.moveTo((a.x+.5)/B.size*w,(a.y+.5)/B.size*h);c.lineTo((b.x+.5)/B.size*w,(b.y+.5)/B.size*h);c.stroke();}c.strokeStyle='#fff9e7';c.lineWidth=2;const cam=this.camera;c.strokeRect((cam.x-this.width/2/cam.zoom)/(B.size*T)*w,(cam.y-this.height/2/cam.zoom)/(B.size*T)*h,this.width/cam.zoom/(B.size*T)*w,this.height/cam.zoom/(B.size*T)*h);for(const [n]of this.game.tolls){const p=point(n);c.fillStyle='#f7bd38';c.beginPath();c.arc(p.x/B.size*w,p.y/B.size*h,3,0,7);c.fill();}}
 }

@@ -35,7 +35,9 @@ public class MainActivity extends Activity {
                 android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars());
                 view.setPadding(bars.left,bars.top,bars.right,bars.bottom);
             }else view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());
-            return insets;
+            // The native container already applies the safe area. Do not also expose
+            // those insets to CSS env(safe-area-inset-*) inside the WebView.
+            return android.os.Build.VERSION.SDK_INT>=30?android.view.WindowInsets.CONSUMED:insets.consumeSystemWindowInsets();
         });
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);

@@ -4,16 +4,17 @@ import assert from 'node:assert/strict';
 import {traceTiles} from '../src/brush.js';
 import {Simulation} from '../src/simulation.js';
 import {id} from '../src/world.js';
+import {B} from '../src/balance.js';
 import {updateTutorial} from '../src/tutorial.js';
 import {serialize} from '../src/storage.js';
 
 test('sparse pointer samples produce contiguous four-connected road traces',()=>{
   for(const [a,b] of [[id(2,2),id(9,2)],[id(9,9),id(2,2)],[id(39,0),id(0,1)],[id(10,20),id(10,5)]]){
     const path=traceTiles(a,b);assert.equal(path[0],a);assert.equal(path.at(-1),b);
-    for(let i=1;i<path.length;i++){const x1=path[i-1]%40,y1=Math.floor(path[i-1]/40),x2=path[i]%40,y2=Math.floor(path[i]/40);assert.equal(Math.abs(x1-x2)+Math.abs(y1-y2),1);}
+    for(let i=1;i<path.length;i++){const x1=path[i-1]%B.size,y1=Math.floor(path[i-1]/B.size),x2=path[i]%B.size,y2=Math.floor(path[i]/B.size);assert.equal(Math.abs(x1-x2)+Math.abs(y1-y2),1);}
     assert.equal(new Set(path).size,path.length);
   }
-  assert.deepEqual(traceTiles(-1,2),[]);assert.deepEqual(traceTiles(1600,2),[]);
+  assert.deepEqual(traceTiles(-1,2),[]);assert.deepEqual(traceTiles(B.layerOffset,2),[]);
 });
 test('a drag builds all sampled road tiles and one undo restores the complete stroke',()=>{
   const g=legacyGame(()=>.4),before=g.coins,tiles=traceTiles(id(15,15),id(15,11));g.beginStroke('road');

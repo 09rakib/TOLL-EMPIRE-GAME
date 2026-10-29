@@ -1,10 +1,10 @@
 export const B = Object.freeze({
-  size:40, tile:56, startCoins:1000, maxCars:250, demandPerMinute:100,
+  size:64, tile:56, startCoins:1000, maxCars:250, demandPerMinute:100,
   fixedStep:1/30, spawnInterval:.6, carTilesPerSecond:1.45,
   tileTravelTime:40/12, roadPrice:25, tollPrice:150, maxToll:30, initialToll:10,
   zoomMin:.4, zoomMax:2.5, zoomStep:.2, saveSeconds:15,
   refund:.6, replanSeconds:8, carSpacing:.55,
-  layerOffset:1600, mainPrice:60, bridgePrice:100, flyoverPrice:90,
+  layerOffset:4096, mainPrice:60, bridgePrice:100, flyoverPrice:90,
   signalPrice:120, roundaboutPrice:180, maxBooths:12, maxSpan:14,
   bprA:.65, bprB:4, minSpeedRatio:.18, localCapacity:3, mainCapacity:6,
   busyRatio:.65, jamRatio:1.2, mainSpeed:1.4, flyoverSpeed:1.75,
@@ -28,7 +28,7 @@ export const B = Object.freeze({
   plannerHomeDemand:2.5, plannerBusinessDemand:.35, plannerHomeVehicles:4,
   plannerVisitFees:[0,8,14,0,24,20], plannerCapacities:[0,18,24,0,12,16],
   plannerFeeGrowth:1.55, plannerCapacityGrowth:1.45, plannerBusChance:.15,
-  boothCollectionBonus:.15,
+  boothTollLimits:[10,20,30,40,50],
   elasticity:[[0,1],[.125,.85],[.25,.6],[.5,.25],[.75,.08],[1.2,0]],
   colors:{grass:'#b4ce94', road:'#646e73', river:'#76c9d9', ink:'#243d3b',cream:'#fff9eb', gold:'#f2bd44'},
 });

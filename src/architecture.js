@@ -31,6 +31,6 @@ export function drawToll(c,n,toll){
 }
 export function drawUpgradeComparison(canvas,item,toll=false){
   const c=canvas.getContext('2d'),level=item.level||1;c.clearRect(0,0,canvas.width,canvas.height);c.fillStyle='#f0f3e5';c.fillRect(0,0,canvas.width,canvas.height);
-  for(let side=0;side<2;side++){c.save();c.translate(side?180:35,0);const sample={...item,level:side?Math.min(5,level+1):level,x:0,y:1};if(toll)drawToll(c,40,sample);else drawPlannerBuilding(c,sample);c.restore();}
+  for(let side=0;side<2;side++){c.save();c.translate(side?180:35,0);const sample={...item,level:side?Math.min(5,level+1):level,x:0,y:1};if(toll&&side)sample.price=B.boothTollLimits[sample.level-1];if(toll)drawToll(c,B.size,sample);else drawPlannerBuilding(c,sample);c.restore();}
   c.fillStyle='#5e7e60';c.font='11px Arial';c.textAlign='center';c.fillText(`Current · Lv ${level}`,63,133);c.fillText(level===5?'Maximum level':`After upgrade · Lv ${level+1}`,208,133);c.font='20px Arial';c.fillStyle='#a8b799';c.fillText('→',138,79);
 }

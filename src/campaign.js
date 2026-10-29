@@ -4,9 +4,9 @@ export const POLICIES={balanced:{name:'Balanced city',description:'A steady mix 
 export const DISTRICTS=[
   {id:'north',name:'Northwood',subtitle:'Homes, parks and room to grow',x:8,y:8,level:1,bounds:[0,0,25,14]},
   {id:'central',name:'Willow Quarter',subtitle:'The heart of your daily commute',x:19,y:17,level:2,bounds:[0,15,25,22]},
-  {id:'east',name:'Eastbank',subtitle:'A new destination across the water',x:30,y:18,level:3,bounds:[26,0,39,24]},
-  {id:'south',name:'Market Gardens',subtitle:'A neighborhood worth connecting',x:15,y:29,level:5,bounds:[0,23,25,39]},
-  {id:'harbor',name:'Willow Harbor',subtitle:'Turn the southern bank into a destination',x:31,y:30,level:7,bounds:[26,25,39,39]},
+  {id:'east',name:'Eastbank',subtitle:'A new destination across the water',x:30,y:18,level:3,bounds:[26,0,B.size-1,24]},
+  {id:'south',name:'Market Gardens',subtitle:'A neighborhood worth connecting',x:15,y:29,level:5,bounds:[0,23,25,B.size-1]},
+  {id:'harbor',name:'Willow Harbor',subtitle:'Turn the southern bank into a destination',x:31,y:30,level:7,bounds:[26,25,B.size-1,B.size-1]},
 ];
 export const districtFor=b=>DISTRICTS.find(d=>b.x>=d.bounds[0]&&b.y>=d.bounds[1]&&b.x<=d.bounds[2]&&b.y<=d.bounds[3]);
 export const xpThreshold=level=>Math.round(B.levelBaseXp*Math.pow(level-1,B.levelExponent));
@@ -15,7 +15,7 @@ export function createCampaign(saved,earned=0){
   return {xp:Math.floor(earned*B.xpPerCoin),trips:0,contractSerial:0,contracts:[],claimed:0,achievements:[],districts:{},event:null,eventRound:0,nextEvent:B.eventInterval,playTime:0,pendingOffline:0,tutorial:{step:0,done:false},...structuredClone(saved||{})};
 }
 export const ACHIEVEMENTS=[{id:'builder',name:'A place to call home',key:'managed',target:3,reward:250},{id:'operator',name:'More than a toll booth',key:'boothLevels',target:4,reward:600},{id:'commuter',name:'The daily commute',key:'served',target:500,reward:900},{id:'planner',name:'Room to grow',key:'main',target:30,reward:1000},{id:'metropolis',name:'The city never sleeps',key:'trips',target:2000,reward:2000},{id:'empire',name:'An empire in the making',key:'earned',target:50000,reward:4000}];
-export function createSettings(saved){const settings={cityName:'Willow City',theme:'meadow',night:false,roadColor:'slate',policy:'balanced',sound:false,lowPower:false,showLabels:true,...saved};if(!THEMES[settings.theme])settings.theme='meadow';if(!POLICIES[settings.policy])settings.policy='balanced';if(!['slate','clay','midnight'].includes(settings.roadColor))settings.roadColor='slate';settings.cityName=String(settings.cityName).trim().slice(0,24)||'Willow City';return settings;}
+export function createSettings(saved){const settings={cityName:'Willow City',theme:'meadow',night:false,roadColor:'slate',policy:'balanced',sound:false,lowPower:false,showLabels:true,hideGoal:false,...saved};if(!THEMES[settings.theme])settings.theme='meadow';if(!POLICIES[settings.policy])settings.policy='balanced';if(!['slate','clay','midnight'].includes(settings.roadColor))settings.roadColor='slate';settings.cityName=String(settings.cityName).trim().slice(0,24)||'Willow City';return settings;}
 const missionTypes=[
   {key:'served',verb:'Serve toll customers',target:r=>30+Math.floor(r/3)*15},
   {key:'roads',verb:'Extend your road network',target:r=>Math.min(8,4+Math.floor(r/4))},

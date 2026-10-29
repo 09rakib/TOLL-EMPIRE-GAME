@@ -1,4 +1,4 @@
-# Toll Empire · v0.4.0: build your own city
+# Toll Empire · v0.4.1: full-screen city planner
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
@@ -44,12 +44,12 @@ You start with 1,000 coins, empty building plots, one straight road and two vehi
 
 Visitor admission is limited by service capacity. Visitors arriving while admission is unavailable do not pay. Buildings need a city road connection. Business fees grow by 1.55 per level and capacities by about 1.45; inspector figures show the current values. Policies, district investments and festivals can modify receipts. Total income displays actual toll and visitor receipts from the last simulation minute.
 
-Tolls also change appearance at every level. Capacity progresses through 45 / 70 / 100 / 140 / 190 vehicles/min. Each extra level grants a clearly labeled 15% city collection bonus; drivers choose routes using the posted toll price. With only the starter road there is no free detour: build alternative roads to introduce route choices.
+Tolls also change appearance at every level. Capacity progresses through 45 / 70 / 100 / 140 / 190 vehicles/min. Planner toll limits are $10 / $20 / $30 / $40 / $50 at levels 1–5. Upgrading activates the newly unlocked rate; the player can lower it. Each passing vehicle pays exactly the displayed price, with no extra collection multiplier. Legacy cities retain their original $30 maximum. With only the starter road there is no free detour: build alternative roads to introduce route choices.
 
 ## Controls and progression
 
 - Drag to pan, pinch or scroll to zoom; the minimap relocates the camera. Touch layouts support portrait play.
-- Quick tools: road, toll, home, office and full build menu. Roads and demolition support continuous brushes; a drag is one undo action. Flyovers, bridges, main roads, signals and roundabouts remain available.
+- Full-screen map fills the safe content area, with no decorative white border or city-title overlay. Compact balance/income sit together at top left, a small minimap is at top right, and simulation speed buttons run vertically down the right edge. Pinch/scroll still zoom; there are no zoom or locator buttons. The objective banner can be dismissed with × and restored from Build menu; dismissal persists. Quick tools: road, toll, home, office and full build menu. Undo, permanent upgrades, city development, customization and traffic view are inside Build menu. Roads and demolition support continuous brushes; a drag is one undo action. Flyovers, bridges, main roads, signals and roundabouts remain available.
 - Pause or choose 1× / 2× / 3×. Space toggles pause when the map has focus. Background tabs stop simulation. Low-power mode limits rendering resolution and vehicle supply.
 - Tap roads for congestion, actual recent flow, travel time, toll income and history. Drivers replan when the network or tolls change.
 - Customize the city name, landscape, road color, evening lights, labels, sound, policy and building paint.
@@ -73,10 +73,10 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-57 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
+60 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 
 `src/planner.js` handles visitor demand and receipts; `architecture.js` draws level-specific buildings, tolls and upgrade previews; `balance.js` contains prices and tuning; `simulation.js` handles traffic, construction and undo; `growth.js` handles development; `world.js` creates planner/legacy maps; `storage.js` preserves profiles; `renderer.js` draws the city; `app.js`, `city-ui.js` and `tutorial.js` handle controls and guidance.
 
-The world is 40×40 tiles. Building levels and district investments are finite, while contracts, events and traffic continue. Long-term retention and low-end Android frame rates have not been measured. Traffic uses a tile-capacity model rather than individual lane changes. This release has no real ads or multiplayer.
+The world is 64×64 tiles (4,096 plots), expanded from 40×40. Older saves migrate automatically, remapping road/booth/structure nodes while keeping buildings at their original coordinates. Building levels and district investments are finite, while contracts, events and traffic continue. Long-term retention and low-end Android frame rates have not been measured. Traffic uses a tile-capacity model rather than individual lane changes. This release has no real ads or multiplayer.

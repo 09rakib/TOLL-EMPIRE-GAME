@@ -20,6 +20,7 @@ export class Simulation {
     this.mode=saved?(saved.worldMode||'legacy'):'planner';
     this.tiles=[...city.tiles];this.buildings=structuredClone(city.buildings);this.coins=saved?.coins??B.startCoins;
     this.tolls=new Map((saved?.tolls||[]).map(([n,t])=>[n,{...t,level:t.level||1}]));
+    if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
     this.flyovers=structuredClone(saved?.flyovers||[]);this.signals=new Set(saved?.signals||[]);
     this.bridges=structuredClone(saved?.bridges||[]);this.upgrades={faster:0,booths:0,traffic:0,repair:0,offline:0,...saved?.upgrades};
     this.graph=graphFrom(this.tiles,this.flyovers);
@@ -102,7 +103,7 @@ export class Simulation {
     const node=car.route[car.index];
     if(!this.warming)this.tracker.passage(this.time,node,car.edgeAge*B.tileTravelTime*B.carTilesPerSecond);car.edgeAge=0;
     const booth=this.tolls.get(node);
-    if(booth&&!this.warming){const receipt=booth.price*(this.mode==='planner'?1+(booth.level-1)*B.boothCollectionBonus:1);this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
+    if(booth&&!this.warming){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
     if(car.index>=car.route.length-1){car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;if(this.mode==='planner')this.settleVisit(car);}return;}
     if(car.revision!==this.revision){
       const route=this.route(node,car.destination,car.vot);
@@ -167,6 +168,7 @@ export class Simulation {
     if(JSON.stringify(previous.bridges)!==JSON.stringify(previous.after.bridges))this.bridges=previous.bridges;
     const beforeSignals=new Set(previous.signals),afterSignals=new Set(previous.after.signals);
     for(const n of new Set([...beforeSignals,...afterSignals]))if(beforeSignals.has(n)!==afterSignals.has(n)){if(beforeSignals.has(n))this.signals.add(n);else this.signals.delete(n);}
+    if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
     this.rebuild();return null;
   }
   neighbors(n){const {x,y}=point(n);return [[x-1,y],[x+1,y],[x,y-1],[x,y+1]].filter(([a,b])=>a>=0&&b>=0&&a<B.size&&b<B.size).map(([a,b])=>id(a,b));}
@@ -261,7 +263,8 @@ export class Simulation {
     if(this.alternativeCache.size>30)this.alternativeCache.clear();this.alternativeCache.set(key,result);return result;
   }
   alternativeStats(n){const a=this.alternativeNode(n);return a===null?null:{node:a,...this.stats(a)};}
-  setToll(node,price){const t=this.tolls.get(node);if(t){const next=Math.max(0,Math.min(B.maxToll,Math.round(price)));if(next===t.price)return;t.baseline=this.stats(node);t.alternativeBefore=this.alternativeStats(node);t.price=next;this.revision++;}}
+  tollLimit(toll){return this.mode==='planner'?B.boothTollLimits[(toll?.level||1)-1]:B.maxToll;}
+  setToll(node,price){const t=this.tolls.get(node);if(t&&Number.isFinite(price)){const next=Math.max(0,Math.min(this.tollLimit(t),Math.round(price)));if(next===t.price)return;t.baseline=this.stats(node);t.alternativeBefore=this.alternativeStats(node);t.price=next;this.revision++;}}
   removeToll(node){
     const t=this.tolls.get(node);if(!t)return 'No booth to remove.';
     const before=this.snapshot(),value=B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0);
@@ -271,7 +274,7 @@ export class Simulation {
     const t=this.tolls.get(node);if(!t)return 'Select a toll booth first.';
     if(t.level>=5)return 'This booth is already at level 5.';
     const cost=B.boothUpgradePrices[t.level-1];if(this.coins<cost)return `You need ${cost} coins to upgrade this booth.`;
-    const before=this.snapshot();this.coins-=cost;t.level++;this.record(before);this.revision++;return null;
+    const before=this.snapshot();this.coins-=cost;t.level++;if(this.mode==='planner')t.price=this.tollLimit(t);this.record(before);this.revision++;return null;
   }
   upgradeCost(type){return Math.round(B.upgradeBasePrice*Math.pow(B.upgradePriceMultiplier,this.upgrades[type]||0));}
   buyUpgrade(type){

@@ -106,6 +106,7 @@ export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame
     const c=game.campaign.contracts.find(c=>contractProgress(game,c)>=c.target)||game.campaign.contracts[0];
     $('#goal-text').textContent=c?c.title:'Your next big idea';$('#goal-count').textContent=c?`${fmt(contractProgress(game,c))} / ${fmt(c.target)}`:'↗';
     $('#mission-goal').classList.toggle('claim-ready',!!c&&contractProgress(game,c)>=c.target);
+    $('#goal-banner').hidden=!!s.hideGoal;
     for(const label of document.querySelectorAll('.map-label'))label.hidden=!s.showLabels;
     $('#day').textContent=`DAY ${String(Math.floor(game.campaign.playTime/600)+1).padStart(2,'0')}`;
     $('#welcome-offline').hidden=!game.campaign.pendingOffline;$('#welcome-offline').textContent=`Collect ${fmt(game.campaign.pendingOffline)} offline coins`;

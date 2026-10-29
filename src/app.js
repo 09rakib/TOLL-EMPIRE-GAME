@@ -12,6 +12,11 @@ import {setupTutorial} from './tutorial.js';
 import {PROJECTS} from './projects.js';
 import {drawUpgradeComparison} from './architecture.js';
 const $=s=>document.querySelector(s);
+// Keep secondary actions in the build menu instead of over the city.
+for(const [id,icon,label]of [['undo','undo','Undo'],['shop','star','City upgrades'],['city-board','flag','City development'],['customize','paint','Customize'],['heatmap','layers','Traffic view']]){
+  const button=$('#'+id);button.removeAttribute('data-icon');button.innerHTML=`<span data-icon="${icon}"></span><span>${label}</span>`;$('#menu-actions').append(button);
+}
+const showGoal=document.createElement('button');showGoal.id='show-objective';showGoal.innerHTML='<span data-icon="flag"></span><span>Show objective</span>';$('#menu-actions').append(showGoal);
 hydrateIcons();
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
@@ -28,7 +33,7 @@ function chooseTool(next){
   for(const b of document.querySelectorAll('[data-tool]')){b.classList.toggle('active',b.dataset.tool===tool);b.setAttribute('aria-pressed',String(b.dataset.tool===tool));}
   $('#build-guide').hidden=!tool;$('#hint').hidden=!!tool||renderer.heat;
   const item=catalog.find(i=>i.id===tool);
-  $('#build-instruction').textContent=item?`${item.name} · ${item.hint}`:'';
+  $('#build-instruction').textContent=item?item.name:'';
   $('#map').style.cursor=tool?'crosshair':'grab';
   tutorial?.update();
 }
@@ -51,10 +56,12 @@ function updatePanel(){
   $('#road-condition').textContent={free:'● Free flowing',busy:'▨ Busy',jammed:'▧ Jammed'}[condition];$('#road-condition').dataset.state=condition;
   $('#road-cars').textContent=stats.cars;$('#road-income').textContent=money(stats.income);$('#road-time').textContent=time(stats.avgTime);
   if(booth){
-    $('#toll-slider').value=booth.price;$('#toll-value').textContent=booth.price;$('#road-level').textContent=String(booth.level).padStart(2,'0');
+    $('#toll-slider').max=game.tollLimit(booth);$('#toll-slider').value=booth.price;$('#toll-value').textContent=booth.price;$('#road-level').textContent=String(booth.level).padStart(2,'0');
     $('#booth-capacity').textContent=Math.round(game.boothCapacity(selected));$('#booth-queue').textContent=game.queueLength(selected);
     $('#booth-upgrade-preview').hidden=game.mode!=='planner';
-    $('#booth-upgrade-preview').textContent=`City collection bonus: +${Math.round((booth.level-1)*B.boothCollectionBonus*100)}%${booth.level<5?` → +${Math.round(booth.level*B.boothCollectionBonus*100)}% next level`:''}. Drivers still pay the base toll. Upgrades also increase capacity and rebuild the booth.`;
+    const limit=game.tollLimit(booth);$('#toll-slider').max=limit;$('#toll-limit-label').textContent=`${limit} coins max · Level ${booth.level}`;
+    $('#toll-plus').disabled=booth.price>=limit;$('#toll-minus').disabled=booth.price<=0;
+    $('#booth-upgrade-preview').textContent=`Level ${booth.level}: up to $${limit} per vehicle.${booth.level<5?` Upgrade unlocks $${game.mode==='planner'?B.boothTollLimits[booth.level]:B.maxToll}, raises the rate and increases service capacity.`:' Maximum booth level.'} You receive exactly the posted charge.`;
     $('#toll-upgrade-preview').hidden=game.mode!=='planner';if(game.mode==='planner')drawUpgradeComparison($('#toll-upgrade-preview'),booth,true);
     const before=booth.baseline||{cars:0,avgTime:0,income:0};
     $('#compare-cars').textContent=`${before.cars} → ${stats.cars} (${stats.cars-before.cars>=0?'+':''}${stats.cars-before.cars})`;
@@ -75,7 +82,7 @@ function updatePanel(){
   $('#chart-start').textContent=samples.length?`${Math.round((game.time-samples[0].time)/60*10)/10} min ago`:'Samples begin after 5s';
   const alternative=game.alternativeStats(selected),old=booth?.alternativeBefore;
   if(alternative){const delta=old&&old.node===alternative.node?alternative.cars-old.cars:null;$('#alternative').textContent=`Alternative · ${roadName(alternative.node)}: ${alternative.cars} cars/min${delta===null?'':` (${delta>=0?'+':''}${delta} since toll change)`}`;}else $('#alternative').textContent='Build another connection to give drivers more route choices.';
-  $('#insight-text').textContent=booth?(game.queueLength(selected)>2?'A queue is forming. Upgrade booth capacity or give drivers another route.':booth.price>=20?'A premium toll means fewer drivers. Watch traffic take the free route.':booth.price===0?'A free ride! Traffic returns, but your booth earns no coins.':'Try 10–15 coins. Compare actual traffic and revenue as drivers adapt.'):'Place a booth on a busy road. More lanes and better intersections can keep traffic moving.';
+  $('#insight-text').textContent=booth?(game.queueLength(selected)>2?'A queue is forming. Upgrade booth capacity or give drivers another route.':booth.price>=20?'Drivers can avoid premium tolls when you build a free alternative route.':booth.price===0?'A free ride! Traffic returns, but your booth earns no coins.':`Set a rate up to ${game.tollLimit(booth)} at this level. Compare actual traffic and revenue.`):'Place a booth on a busy road. More lanes and better intersections can keep traffic moving.';
 }
 function itemUnavailable(item){if(item.minLevel&&game.cityLevel<item.minLevel)return `City level ${item.minLevel} required`;if(PROJECTS[item.id]&&game.buildings.some(b=>b.project===item.id))return 'Already in your city';if(item.cost>game.coins)return 'Not enough coins';return '';}
 function renderBuildMenu(){
@@ -163,15 +170,17 @@ canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);finishS
 canvas.addEventListener('pointerleave',()=>{renderer.ghost=null;renderer.spanPreview=null;});
 canvas.addEventListener('wheel',e=>{e.preventDefault();const p=local(e);renderer.zoom(-Math.sign(e.deltaY)*.08,p.x,p.y);},{passive:false});
 $('#zoom-in').onclick=()=>renderer.zoom(B.zoomStep);$('#zoom-out').onclick=()=>renderer.zoom(-B.zoomStep);$('#center').onclick=()=>renderer.center();
-$('#heatmap').onclick=()=>{renderer.heat=!renderer.heat;$('#heatmap').classList.toggle('active',renderer.heat);$('#heatmap').setAttribute('aria-pressed',String(renderer.heat));$('#heat-legend').hidden=!renderer.heat;$('#hint').hidden=renderer.heat||!!tool;toast(renderer.heat?'Traffic view: ● free · ▨ busy · ▧ jammed. Striped tiles show congestion.':'Back to city view.');};
+$('#heatmap').onclick=()=>{$('#build-sheet').hidden=true;renderer.heat=!renderer.heat;$('#heatmap').classList.toggle('active',renderer.heat);$('#heatmap').setAttribute('aria-pressed',String(renderer.heat));$('#heat-legend').hidden=!renderer.heat;$('#hint').hidden=renderer.heat||!!tool;toast(renderer.heat?'Traffic view: ● free · ▨ busy · ▧ jammed. Striped tiles show congestion.':'Back to city view.');};
 for(const button of document.querySelectorAll('[data-tool]'))button.onclick=()=>chooseTool(button.dataset.tool);
 $('#cancel-build').onclick=()=>chooseTool(null);$('#close-panel').onclick=closePanel;
 $('#more-tools').onclick=()=>{const open=$('#build-sheet').hidden;if(tool)chooseTool(null);closePanel();closeSheets();$('#build-sheet').hidden=!open;if(open)renderBuildMenu();};
 $('#close-build').onclick=()=>$('#build-sheet').hidden=true;
+$('#dismiss-goal').onclick=()=>{game.settings.hideGoal=true;changed();};
+$('#show-objective').onclick=()=>{game.settings.hideGoal=false;$('#build-sheet').hidden=true;changed();};
 for(const tab of document.querySelectorAll('[data-category]'))tab.onclick=()=>{category=tab.dataset.category;for(const t of document.querySelectorAll('[data-category]')){t.classList.toggle('active',t===tab);t.setAttribute('aria-selected',String(t===tab));}renderBuildMenu();};
 $('#shop').onclick=()=>{const open=$('#shop-sheet').hidden;if(tool)chooseTool(null);closePanel();closeSheets();$('#shop-sheet').hidden=!open;if(open)renderShop();};
 $('#close-shop').onclick=()=>$('#shop-sheet').hidden=true;
-function undo(){const error=game.undo();if(error)toast(error);else{closePanel();spanStart=null;renderer.spanPreview=null;renderer.selected=null;changed();toast('Last construction undone. Toll earnings are preserved.');}}
+function undo(){const error=game.undo();if(error)toast(error);else{closeSheets();closePanel();spanStart=null;renderer.spanPreview=null;renderer.selected=null;changed();toast('Last construction undone. Toll earnings are preserved.');}}
 $('#undo').onclick=undo;
 function changePrice(price){if(selected===null)return;game.setToll(selected,price);if(sliderBaseline){const t=game.tolls.get(selected);t.baseline=sliderBaseline.baseline;t.alternativeBefore=sliderBaseline.alternativeBefore;}scheduleSave();updatePanel();}
 $('#toll-slider').onpointerdown=()=>{if(selected!==null)sliderBaseline={baseline:game.stats(selected),alternativeBefore:game.alternativeStats(selected)};};
@@ -179,7 +188,7 @@ $('#toll-slider').oninput=e=>changePrice(+e.target.value);
 $('#toll-slider').onchange=()=>sliderBaseline=null;$('#toll-slider').onpointercancel=()=>sliderBaseline=null;
 $('#toll-minus').onclick=()=>changePrice((game.tolls.get(selected)?.price||0)-1);$('#toll-plus').onclick=()=>changePrice((game.tolls.get(selected)?.price||0)+1);
 $('#panel-action').onclick=()=>{if(selected===null)return;const error=game.build(selected,'toll');if(error)toast(error);else{changed();toast('Another booth is open. Find its sweet spot.');}};
-$('#upgrade-booth').onclick=()=>{const error=game.upgradeBooth(selected);if(error)toast(error);else{changed();toast('Booth upgraded. More capacity, shorter queues.');}};
+$('#upgrade-booth').onclick=()=>{const error=game.upgradeBooth(selected);if(error)toast(error);else{changed();toast(`Booth upgraded · ${game.tolls.get(selected).price} per vehicle.`);}};
 $('#remove-toll').onclick=()=>{const error=game.removeToll(selected);if(error)toast(error);else{changed();toast('Booth removed. 60% of its investment returned.');}};
 $('#mini').style.cursor='pointer';$('#mini').onclick=e=>{const r=e.target.getBoundingClientRect();renderer.camera.x=(e.clientX-r.left)/r.width*B.size*B.tile;renderer.camera.y=(e.clientY-r.top)/r.height*B.size*B.tile;renderer.clamp();};
 function configurePlannerUI(){
