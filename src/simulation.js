@@ -21,6 +21,7 @@ export class Simulation {
   constructor(saved=null,random=Math.random) {
     const city=saved||createCity();
     this.mode=saved?(saved.worldMode||'legacy'):'planner';
+    this.riverLayout=city.riverLayout||0;
     this.tiles=[...city.tiles];this.buildings=structuredClone(city.buildings);this.coins=saved?.coins??B.startCoins;
     this.trees=new Set(saved?.trees??(this.mode==='planner'?forestFor(this.tiles):[]));
     this.walkers=[];this.walkClock=0;
@@ -29,6 +30,7 @@ export class Simulation {
     this.flyovers=structuredClone(saved?.flyovers||[]);this.signals=new Set(saved?.signals||[]);
     this.bridges=structuredClone(saved?.bridges||[]);this.upgrades={faster:0,booths:0,traffic:0,repair:0,offline:0,...saved?.upgrades};
     this.graph=graphFrom(this.tiles,this.flyovers);
+    this.walkTopology=0;this.walkTopologySignature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');
     this.random=random;this.cars=[];this.pool=[];this.earned=saved?.earned||0;this.served=saved?.served||0;
     this.campaign=createCampaign(saved?.campaign,this.earned);this.settings=createSettings(saved?.settings);
     if(saved&&!saved.campaign?.tutorial)this.campaign.tutorial={step:0,done:true};
@@ -89,8 +91,9 @@ export class Simulation {
     return (Math.floor(this.time/(B.signalCycle/2))%2===0)===horizontal;
   }
   advance(car,dt){
+    if(car.done)return;
     const current=car.route[car.index],next=car.route[car.index+1];
-    if(next===undefined){car.done=true;return;}
+    if(next===undefined){if(this.mode==='planner'&&!this.warming){car.progress+=dt*B.carTilesPerSecond;car.age+=dt;if(car.progress<1)return;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;this.settleVisit(car);}car.done=true;return;}
     car.age+=dt;car.edgeAge=(car.edgeAge||0)+dt;
     if(car.waitingNode!==null&&car.waitingNode!==undefined){
       if(!this.tolls.has(car.waitingNode)){car.waitingNode=null;}
@@ -110,7 +113,7 @@ export class Simulation {
     if(!this.warming)this.tracker.passage(this.time,node,car.edgeAge*B.tileTravelTime*B.carTilesPerSecond);car.edgeAge=0;
     const booth=this.tolls.get(node);
     if(booth&&!this.warming){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
-    if(car.index>=car.route.length-1){car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;if(this.mode==='planner')this.settleVisit(car);}return;}
+    if(car.index>=car.route.length-1){if(this.mode==='planner'&&!this.warming){car.progress=0;return;}car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}return;}
     if(car.revision!==this.revision){
       const route=this.route(node,car.destination,car.vot);
       if(!route){car.done=true;return;}car.route=route;car.index=0;car.revision=this.revision;
@@ -131,7 +134,11 @@ export class Simulation {
     this.updateGrowth(dt);
     this.updateWalkers(dt);
   }
-  syncCarPosition(car){const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],ax=from%B.size,ay=Math.floor((from%B.layerOffset)/B.size),bx=to%B.size,by=Math.floor((to%B.layerOffset)/B.size);car.worldX=ax+.5+(bx-ax)*car.progress-(by-ay)*9/B.tile;car.worldY=ay+.5+(by-ay)*car.progress+(bx-ax)*9/B.tile;car.angle=Math.atan2(by-ay,bx-ax);}
+  syncCarPosition(car){
+    const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],a=point(from),b=point(to);let dx=b.x-a.x,dy=b.y-a.y,progress=car.progress;
+    if(this.mode==='planner'&&car.index===car.route.length-1){const previous=point(car.route[Math.max(0,car.index-1)]);dx=a.x-previous.x;dy=a.y-previous.y;if(!dx&&!dy){dx=Math.cos(car.angle||0);dy=Math.sin(car.angle||0);}progress*=.9;}
+    car.worldX=a.x+.5+dx*progress-dy*9/B.tile;car.worldY=a.y+.5+dy*progress+dx*9/B.tile;car.angle=Math.atan2(dy,dx);
+  }
   get income(){return this.tracker.income;}
   stats(node){return this.tracker.stats(node,this.time);}
   snapshot(){return {tiles:[...this.tiles],trees:[...this.trees],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
@@ -145,6 +152,7 @@ export class Simulation {
   }
   rebuild(){
     this.graph=graphFrom(this.tiles,this.flyovers);this.revision++;
+    const signature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');if(signature!==this.walkTopologySignature){this.walkTopology++;this.walkTopologySignature=signature;}
     this.refreshDevelopment();
     for(const n of this.serviceNext.keys())if(!this.tolls.has(n))this.serviceNext.delete(n);
     for(const car of this.cars){if(car.waitingNode!==null&&!this.tolls.has(car.waitingNode))car.waitingNode=null;if(car.route.some(n=>!this.graph.has(n)))car.done=true;}
@@ -263,6 +271,17 @@ export class Simulation {
     else{for(const n of plan.nodes)this.tiles[n]=this.tiles[n]==='river'?'bridge':isRoad(this.tiles[n])?this.tiles[n]:'road';this.bridges.push({nodes:plan.nodes,cost:plan.cost});}
     this.record(before);this.rebuild();return null;
   }
+  planBentFlyover(start,bend,end){
+    const a=point(start),b=point(bend),c=point(end),nodes=[];
+    if(![start,bend,end].every(n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset)||start===bend||bend===end||start===end)return {error:'Choose two ramps and a separate bend tile.'};
+    if((a.x!==b.x&&a.y!==b.y)||(b.x!==c.x&&b.y!==c.y))return {error:'Align each leg of the bend with the tile grid.'};
+    if(!isRoad(this.tiles[start])||!isRoad(this.tiles[end]))return {error:'Both ramps must connect to existing roads.'};
+    for(const [p,q]of [[a,b],[b,c]]){const len=Math.abs(q.x-p.x)+Math.abs(q.y-p.y),dx=Math.sign(q.x-p.x),dy=Math.sign(q.y-p.y);for(let i=nodes.length?1:0;i<=len;i++)nodes.push(id(p.x+dx*i,p.y+dy*i));}
+    if(nodes.length-1>B.maxSpan*2||new Set(nodes).size!==nodes.length)return {error:'Keep each flyover under 28 tiles without doubling back.'};
+    if(nodes.some(n=>!['grass','road','mainRoad','roundabout'].includes(this.tiles[n])||this.trees.has(n)||this.flyovers.some(s=>s.nodes.includes(n))))return {error:'Clear the corridor first. Flyovers cannot overlap trees, buildings, water or another flyover.'};
+    const cost=nodes.length*B.flyoverPrice;return {nodes,cost,error:this.coins<cost?`This flyover costs ${cost} coins.`:null};
+  }
+  buildBentFlyover(start,bend,end){const plan=this.planBentFlyover(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;this.flyovers.push({nodes:plan.nodes,cost:plan.cost,bent:true});this.record(before);this.rebuild();return null;}
   demolish(n){
     const error=this.validate(n,'demolish');if(error)return error;
     const before=this.snapshot();let value=0;

@@ -2,9 +2,10 @@ import {B} from './balance.js';
 import {createCampaign,createSettings} from './campaign.js';
 import {PROJECTS} from './projects.js';
 import {plotCells} from './plots.js';
+import {updateRiver} from './river.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
-export function serialize(game){return {version:3,mapSize:B.size,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
+export function serialize(game){return {version:3,mapSize:B.size,riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
 export function migrate(data){
   if(!data||![1,2,3].includes(data.version))return null;
   if(data.version===1)data={...data,version:2,tolls:data.tolls?.map(([n,t])=>[n,{...t,level:1}]),flyovers:[],bridges:[],signals:[],upgrades:{}};
@@ -16,7 +17,7 @@ export function migrate(data){
     data={...data,mapSize:B.size,tiles,tolls:data.tolls?.map(([n,t])=>[remap(n),{...t,...(t.alternativeBefore?{alternativeBefore:{...t.alternativeBefore,node:remap(t.alternativeBefore.node)}}:{})}]),signals:data.signals?.map(remap),flyovers:data.flyovers?.map(s=>({...s,nodes:s.nodes?.map(remap)})),bridges:data.bridges?.map(s=>({...s,nodes:s.nodes?.map(remap)}))};
   }
   if(data.worldMode==='planner'&&Array.isArray(data.tolls))data={...data,tolls:data.tolls.map(entry=>Array.isArray(entry)&&entry[1]&&Number.isInteger(entry[1].level)&&entry[1].level>=1&&entry[1].level<=5?[entry[0],{...entry[1],price:Math.min(entry[1].price,B.boothTollLimits[entry[1].level-1])}]:entry)};
-  return data;
+  return updateRiver(data);
 }
 export function validateSave(data){
   if(!data||!Array.isArray(data.tiles)||data.tiles.length!==B.layerOffset||!Number.isFinite(data.coins)||data.coins<0||!Array.isArray(data.buildings))return false;

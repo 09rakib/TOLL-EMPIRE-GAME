@@ -5,7 +5,7 @@ import {B} from '../src/balance.js';
 import {id} from '../src/world.js';
 import {plotCells,plannedPlot} from '../src/plots.js';
 import {serialize,validateSave} from '../src/storage.js';
-import {sidewalkPoints} from '../src/pedestrians.js';
+import {pavementAt,buildSidewalkGraph,findSidewalkRoute} from '../src/walkways.js';
 const city=()=>{const g=new Simulation(null,()=>.4);g.coins=10000;g.trees.clear();return g;};
 function run(g,seconds){for(let i=0;i<seconds/B.fixedStep;i++)g.update(B.fixedStep);}
 
@@ -37,7 +37,7 @@ test('park deletion from an interior tile refunds once; undo and saves restore t
   const broken=structuredClone(saved);broken.tiles[id(21,26)]='grass';assert.equal(validateSave(broken),false);
 });
 test('walkers use footpaths, honor pause, avoid demolished road routes and never produce park income',()=>{
-  const g=city(),a=id(18,20),b=id(19,20),points=sidewalkPoints([a,b]);assert.equal(points[0][1],20.5*B.tile+23);assert.equal(points[1][0]-points[0][0],B.tile);
+  const g=city(),a=id(18,20),b=id(19,20),points=findSidewalkRoute(buildSidewalkGraph(g.tiles),a,b).points;assert.ok(points.length>=2);assert.ok(points.every(p=>pavementAt(g.tiles,...p)));
   assert.ok(g.walkers.length);const w=g.walkers[0],x=w.x,y=w.y;g.paused=true;g.update(1);assert.equal(w.x,x);assert.equal(w.y,y);g.paused=false;
   const before=g.coins;run(g,5);assert.equal(g.coins,before);assert.ok(g.walkers.some(p=>p.x!==x||p.y!==y));g.removeRoad(id(19,20));run(g,1);assert.ok(g.walkers.every(p=>p.nodes.every(n=>g.graph.has(n))));
 });

@@ -1,4 +1,4 @@
-# Toll Empire · v0.6.0: large parks and walking streets
+# Toll Empire · v0.7.0: visible parks and connected sidewalks
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
@@ -23,11 +23,21 @@ Build tasks copy current root `index.html`, `src/` and `public/` into generated 
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
 
+## v0.7.0 changes
+
+Parks render as small 224×224 sprites directly into the visible frame, independently of the large terrain cache. Clear & build park quotes clearing plus construction together, performs both in one undoable purchase, and focuses the camera on the finished park. Park tickets pay 4 / 7 / 11 / 16 / 24 coins per actual walking visitor at levels 1–5. Upgrades change the landscape palette and add picnic seating, a cafe, entrance structures and royal-garden details. Removing any house, hotel, office or park remains available near the top of its inspector.
+
+Pedestrians route through a pavement-corner graph; their road movement never uses asphalt or cuts diagonally through grass at turns. Ground-road geometry changes invalidate affected walking paths. Parks have their own interior walking paths. Roads and flyovers have no lane dashes or zebra markings. Upgraded building artwork stays within its own tile. Cars reaching their final road tile visibly drive through the exit before the trip is retired, so a final toll does not immediately swallow the vehicle.
+
+For a bent flyover choose Flyover, enable Add bend, then tap a start road, an aligned clear bend tile and an aligned exit road. The two legs can cross clear grass and roads, with no ground road needed below the middle. Buildings, trees, water and other flyovers block the corridor. Elevated graph nodes follow the full bend and connect to the ground only at the two ramps. Maximum total length is 28 tiles. Undo/demolition handle the whole structure.
+
+The river follows a smooth curve to the northeast edge. Existing city saves receive the new natural layout while retaining buildings, roads, coins and bridge water at existing crossings.
+
 ## City Parks and footpaths (v0.6.0)
 
 New City Parks occupy a complete 4 × 4 square: 16 tiles. The original Canvas park includes a pond, fountain plaza, gazebo, flower beds, sports court, playground, hedges, benches and walking paths. Choose its top-left tile. Every cell must be inside the city, clear of trees and free of roads/buildings/flyovers. The placement preview outlines the full 16-tile footprint. For a wooded park site, the clearing panel quotes the combined tree-removal cost for all 16 cells as one undoable action.
 
-Parks can be built before a road exists. They receive no visitors or connected park benefits until any perimeter tile touches a road connected to a city entrance. An isolated road does not activate them. People follow actual ground-road routes on footpaths, enter the park, walk around it and return. Disconnecting or removing roads/parks invalidates affected walking trips. The inspector shows real park walking visits; visitors do not generate park income. Local roads now have paved sidewalks and animated pedestrians. Walking traffic pauses with the city and respects low-power caps.
+Parks can be built before a road exists. They receive no visitors or connected park benefits until any perimeter tile touches a road connected to a city entrance. An isolated road does not activate them. People follow actual ground-road routes on footpaths, enter the park, walk around it and return. Disconnecting or removing roads/parks invalidates affected walking trips. The inspector shows real park walking visits; each actual walking arrival pays the park ticket fee. Local roads now have paved sidewalks and animated pedestrians. Walking traffic pauses with the city and respects low-power caps.
 
 Tap any of the 16 park tiles to select, upgrade, paint or remove the same park. Removing it refunds once and clears all 16 tiles; Undo restores the entire park. Older one-tile pocket parks remain in place so upgrades do not overwrite neighboring streets or buildings. Remove/rebuild those as City Parks when enough cleared space is available. Walking agents are session-local; park visit totals persist.
 
@@ -89,7 +99,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-73 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
+80 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 

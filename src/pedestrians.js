@@ -1,16 +1,7 @@
 import {B} from './balance.js';
-import {point,isRoad} from './world.js';
+import {point} from './world.js';
+import {buildSidewalkGraph,findSidewalkRoute,CURB_OFFSET} from './walkways.js';
 import {plotSize} from './plots.js';
-export function sidewalkPoints(nodes){
-  const points=[];
-  for(let i=0;i<nodes.length-1;i++){
-    const a=point(nodes[i]),b=point(nodes[i+1]),dx=b.x-a.x,dy=b.y-a.y;
-    const from=[(a.x+.5)*B.tile-dy*23,(a.y+.5)*B.tile+dx*23],to=[(b.x+.5)*B.tile-dy*23,(b.y+.5)*B.tile+dx*23];
-    if(points.length){const last=points.at(-1),cx=(a.x+.5)*B.tile,cy=(a.y+.5)*B.tile;points.push([last[0]+from[0]-cx,last[1]+from[1]-cy]);}
-    points.push(from,to);
-  }
-  return points;
-}
 function parkAccess(b,entrance){
   const p=point(entrance),t=B.tile,s=plotSize(b)*t,x=b.x*t,y=b.y*t,cx=x+s/2,cy=y+s/2,margin=Math.min(28,s/4),d=Math.min(24,s/5),k=d*.71;
   if(p.x<b.x)return [[x+5,(p.y+.5)*t],[x+margin,(p.y+.5)*t],[x+margin,cy],[cx-d,cy],[cx-k,cy+k],[cx,cy+d]];
@@ -20,11 +11,9 @@ function parkAccess(b,entrance){
 }
 function parkLoop(b){const t=B.tile,s=plotSize(b)*t,x=b.x*t,y=b.y*t,m=Math.min(28,s/4),cx=x+s/2,cy=y+s/2,d=Math.min(24,s/5);return [[cx,cy+d],[cx,y+s-m],[x+s-m,y+s-m],[x+s-m,y+m],[x+m,y+m],[x+m,y+s-m],[cx,y+s-m],[cx,cy+d]];}
 export const pedestrianMethods={
-  walkRoute(start,end){
-    const queue=[start],previous=new Map([[start,null]]);
-    for(let i=0;i<queue.length;i++){const n=queue[i];if(n===end){const route=[];for(let p=end;p!==null;p=previous.get(p))route.unshift(p);return route;}
-      for(const a of this.graph.get(n)||[])if(a<B.layerOffset&&isRoad(this.tiles[a])&&!previous.has(a)){previous.set(a,n);queue.push(a);}}
-    return null;
+  walkRoute(start,end,corners){
+    if(this.sidewalkCache?.revision!==this.revision)this.sidewalkCache={revision:this.revision,network:buildSidewalkGraph(this.tiles)};
+    return findSidewalkRoute(this.sidewalkCache.network,start,end,corners);
   },
   spawnWalker(streetOnly=false){
     if(this.mode!=='planner'||this.walkers.length>=(this.settings.lowPower?20:Math.min(48,8+this.homeLevels*2+this.parkDestinations.length*10)))return false;
@@ -32,15 +21,20 @@ export const pedestrianMethods={
     const sources=this.homeDestinations.length?this.homeDestinations:this.endpoints;
     let start=streetOnly?this.endpoints[0]:sources[Math.floor(this.random()*sources.length)],end=site?.node??this.endpoints[start===this.endpoints[0]?1:0];
     if(start===end)start=this.endpoints.find(n=>n!==end)??start;
-    const nodes=this.walkRoute(start,end);if(!nodes||nodes.length<2)return false;
-    const path=sidewalkPoints(nodes),park=site?this.buildingAt(site.building):null;if(park)path.push(...parkAccess(park,site.node));
-    this.walkers.push({path,nodes,index:0,distance:0,x:path[0][0],y:path[0][1],speed:24+this.random()*10,stage:park?'arriving':'street',park:site?.building??null,inbound:path,phase:this.random()*6.28,color:['#e4a354','#b56668','#4f8d9f','#eee5cc','#7c6694'][Math.floor(this.random()*5)]});return true;
+    const park=site?this.buildingAt(site.building):null,p=point(end),t=B.tile;let corners,curb;
+    if(park){if(p.x<park.x){corners=[1,2];curb=[(p.x+1)*t-CURB_OFFSET,(p.y+.5)*t];}
+      else if(p.x>=park.x+plotSize(park)){corners=[0,3];curb=[p.x*t+CURB_OFFSET,(p.y+.5)*t];}
+      else if(p.y<park.y){corners=[2,3];curb=[(p.x+.5)*t,(p.y+1)*t-CURB_OFFSET];}
+      else{corners=[0,1];curb=[(p.x+.5)*t,p.y*t+CURB_OFFSET];}}
+    const route=this.walkRoute(start,end,corners);if(!route||route.points.length<2)return false;
+    const nodes=route.roads,path=[...route.points];if(park)path.push(curb,...parkAccess(park,site.node));
+    this.walkers.push({path,nodes,topology:this.walkTopology,index:0,distance:0,x:path[0][0],y:path[0][1],speed:24+this.random()*10,stage:park?'arriving':'street',park:site?.building??null,inbound:path,phase:this.random()*6.28,color:['#e4a354','#b56668','#4f8d9f','#eee5cc','#7c6694'][Math.floor(this.random()*5)]});return true;
   },
   updateWalkers(dt){
     if(this.mode!=='planner')return;this.walkClock+=dt;
     if(this.walkClock>2){this.walkClock=0;this.spawnWalker();}
     for(let i=this.walkers.length-1;i>=0;i--){const w=this.walkers[i],park=w.park===null?null:this.buildingAt(w.park);
-      if(w.nodes.some(n=>!this.graph.has(n))||(w.park!==null&&(!park||this.buildingEntrance(park)===null))){this.walkers.splice(i,1);continue;}
+      if(w.topology!==this.walkTopology||w.nodes.some(n=>!this.graph.has(n))||(w.park!==null&&(!park||this.buildingEntrance(park)===null))){this.walkers.splice(i,1);continue;}
       let remaining=w.speed*dt;
       while(remaining>0&&w.index<w.path.length-1){const a=w.path[w.index],b=w.path[w.index+1],length=Math.hypot(b[0]-a[0],b[1]-a[1]);
         if(length<.01){w.index++;w.distance=0;continue;}const step=Math.min(remaining,length-w.distance);w.distance+=step;remaining-=step;
@@ -48,7 +42,7 @@ export const pedestrianMethods={
         if(w.distance>=length-.001){w.index++;w.distance=0;}
       }
       if(w.index>=w.path.length-1){
-        if(w.stage==='arriving'){park.visitors=(park.visitors||0)+1;park.walkingVisits=(park.walkingVisits||0)+1;w.stage='visiting';w.path=parkLoop(park);w.index=0;w.distance=0;}
+        if(w.stage==='arriving'){const fee=B.parkTicketFees[(park.level||1)-1];park.visitors=(park.visitors||0)+1;park.walkingVisits=(park.walkingVisits||0)+1;park.revenue=(park.revenue||0)+fee;this.coins+=fee;this.earned+=fee;this.campaign.xp+=fee*B.xpPerCoin;this.businessTracker.passage(this.time,w.park,0);this.businessTracker.payment(this.time,w.park,fee);w.stage='visiting';w.path=parkLoop(park);w.index=0;w.distance=0;}
         else if(w.stage==='visiting'){w.stage='returning';w.path=[...w.inbound].reverse();w.index=0;w.distance=0;}
         else this.walkers.splice(i,1);
       }

@@ -1,11 +1,12 @@
 import { B } from './balance.js';
+import {riverCells} from './river.js';
 export const id = (x,y) => y*B.size+x;
 export const point = n => ({x:n%B.size,y:Math.floor((n%B.layerOffset)/B.size)});
 export function createCity(){
   const tiles=Array(B.size*B.size).fill('grass');
   for(let x=7;x<=31;x++)tiles[id(x,20)]='road';
-  for(let x=0;x<B.size;x++)for(let y=32;y<35;y++)tiles[id(x,y)]='river';
-  return {tiles,buildings:[],worldMode:'planner'};
+  for(const n of riverCells())tiles[n]='river';
+  return {tiles,buildings:[],worldMode:'planner',riverLayout:2};
 }
 // Retained for reading old city backups and regression-testing the road engine.
 export function createLegacyCity() {

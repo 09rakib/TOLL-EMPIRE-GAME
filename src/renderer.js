@@ -2,6 +2,9 @@ import {B} from './balance.js';
 import {id,point,isRoad} from './world.js';
 import {THEMES,DISTRICTS} from './campaign.js';
 import {drawPlannerBuilding,drawToll} from './architecture.js';
+import {drawCityPark} from './park-art.js';
+import {PAVEMENT_WIDTH} from './walkways.js';
+import {riverCurve,riverCells} from './river.js';
 const T=B.tile;
 function rounded(ctx,x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}}
 export class Renderer {
@@ -13,6 +16,8 @@ export class Renderer {
   }
   resize(){const r=this.canvas.getBoundingClientRect();this.width=r.width;this.height=r.height;this.dpr=this.game.settings.lowPower?1:Math.min(devicePixelRatio||1,2);this.canvas.width=r.width*this.dpr;this.canvas.height=r.height*this.dpr;this.clamp();}
   center(){this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera=this.game.mode==='planner'?{x:19.5*T,y:20.5*T,zoom:this.width<600?.8:.85}:{x:19*T,y:19*T,zoom:this.width<600?.65:.72};this.clamp();}
+  focusBuilding(b){const size=(b.footprint||1)*T;this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera.zoom=Math.max(B.zoomMin,Math.min(this.camera.zoom,(this.width-48)/size,(this.height-170)/size));this.camera.x=b.x*T+size/2;this.camera.y=b.y*T+size/2;this.selected=id(b.x,b.y);this.clamp();}
+  parkSprite(b){this.parkSprites??=new Map();const key=`${b.level||1}:${b.paint||0}`;if(!this.parkSprites.has(key)){const sprite=document.createElement('canvas');sprite.width=4*T;sprite.height=4*T;drawCityPark(sprite.getContext('2d'),{...b,x:0,y:0});this.parkSprites.set(key,sprite);}return this.parkSprites.get(key);}
   clamp(){const c=this.camera;const hx=Math.min(B.size*T/2,this.width/2/c.zoom),hy=Math.min(B.size*T/2,this.height/2/c.zoom);c.x=Math.max(hx,Math.min(B.size*T-hx,c.x));c.y=Math.max(hy,Math.min(B.size*T-hy,c.y));}
   screenToWorld(x,y){return {x:(x-this.width/2)/this.camera.zoom+this.camera.x,y:(y-this.height/2)/this.camera.zoom+this.camera.y};}
   tileAt(x,y){const w=this.screenToWorld(x,y);if(w.x<0||w.y<0||w.x>=B.size*T||w.y>=B.size*T)return -1;return id(Math.floor(w.x/T),Math.floor(w.y/T));}
@@ -24,7 +29,7 @@ export class Renderer {
   }
   tree(ctx,x,y,s=1){ctx.fillStyle='#607e4724';ctx.beginPath();ctx.ellipse(x+6*s,y+9*s,11*s,6*s,0,0,7);ctx.fill();rounded(ctx,x-1.5*s,y,3*s,13*s,1,'#7f7954');ctx.fillStyle='#74975c';ctx.beginPath();ctx.arc(x,y-3*s,10*s,0,7);ctx.fill();ctx.fillStyle='#86a668';ctx.beginPath();ctx.arc(x-3*s,y-6*s,7*s,0,7);ctx.fill();}
   bake(){
-    const c=this.terrain.getContext('2d'),tiles=this.game.tiles,theme=THEMES[this.game.settings.theme];c.fillStyle=theme.grass[0];c.fillRect(0,0,this.terrain.width,this.terrain.height);
+    const c=this.terrain.getContext('2d'),tiles=this.game.tiles,theme=THEMES[this.game.settings.theme],smoothRiver=this.game.riverLayout===2?riverCells():null;c.fillStyle=theme.grass[0];c.fillRect(0,0,this.terrain.width,this.terrain.height);
     for(let y=0;y<B.size;y++)for(let x=0;x<B.size;x++){
       const n=id(x,y),type=tiles[n],px=x*T,py=y*T;
       if(type==='grass'||type==='building'){
@@ -39,40 +44,30 @@ export class Renderer {
           if(this.game.mode!=='planner'&&x>7&&x<31&&y>8&&y<30&&(x*3+y*7)%17===0){rounded(c,px+8,py+8,41,39,11,'#a5c48a');c.strokeStyle='#d4dfb8';c.lineWidth=4;c.beginPath();c.moveTo(px+11,py+38);c.lineTo(px+44,py+15);c.stroke();this.tree(c,px+17,py+18,.7);this.tree(c,px+41,py+42,.65);}
         }
       }
-      if(type==='river'){
+      if(type==='river'&&!(smoothRiver?.has(n))){
         c.fillStyle=theme.water;c.fillRect(px,py,T,T);c.fillStyle='#d4efed45';c.fillRect(px+5+(y%3)*7,py+13,23,2);c.fillRect(px+24,py+35,19,2);
         for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){const a=x+dx,b=y+dy;if(a<0||b<0||a>=B.size||b>=B.size)continue;const t=tiles[id(a,b)];if(t!=='river'&&t!=='bridge'){c.fillStyle='#c9d6ae';if(dx===-1)c.fillRect(px,py,4,T);if(dx===1)c.fillRect(px+T-4,py,4,T);if(dy===-1)c.fillRect(px,py,T,4);if(dy===1)c.fillRect(px,py+T-4,T,4);}}
       }
     }
+    if(this.game.riverLayout===2){const [a,b,d,e]=riverCurve();c.lineCap='round';c.beginPath();c.moveTo(a[0]*T,a[1]*T);c.bezierCurveTo(b[0]*T,b[1]*T,d[0]*T,d[1]*T,e[0]*T,e[1]*T);c.strokeStyle='#c8d6a6';c.lineWidth=3.7*T;c.stroke();c.strokeStyle=theme.water;c.lineWidth=3.2*T;c.stroke();c.lineCap='butt';}
     for(let y=0;y<B.size;y++)for(let x=0;x<B.size;x++){
       if(!isRoad(tiles[id(x,y)]))continue;
       const px=x*T,py=y*T,road=(a,b)=>a>=0&&b>=0&&a<B.size&&b<B.size&&isRoad(tiles[id(a,b)]);
       const left=road(x-1,y),right=road(x+1,y),up=road(x,y-1),down=road(x,y+1);
-      const inset=tiles[id(x,y)]==='road'?9:5;
+      const inset=PAVEMENT_WIDTH;
       c.fillStyle='#d9dac7';c.fillRect(px,py,T,T);c.fillStyle=this.game.settings.roadColor==='clay'?'#8a7b70':this.game.settings.roadColor==='midnight'?'#4d5e6a':tiles[id(x,y)]==='mainRoad'?'#5e6e72':'#707c7b';c.fillRect(px+inset,py+inset,T-2*inset,T-2*inset);
       if(left)c.fillRect(px,py+inset,2*inset,T-2*inset);if(right)c.fillRect(px+T-2*inset,py+inset,2*inset,T-2*inset);if(up)c.fillRect(px+inset,py,T-2*inset,2*inset);if(down)c.fillRect(px+inset,py+T-2*inset,T-2*inset,2*inset);
-      if(tiles[id(x,y)]==='road'){c.strokeStyle='#aab7a080';c.lineWidth=.7;c.beginPath();for(let p=0;p<T;p+=9){if(left||right){c.moveTo(px+p,py);c.lineTo(px+p,py+8);c.moveTo(px+p,py+T-8);c.lineTo(px+p,py+T);}if(up||down){c.moveTo(px,py+p);c.lineTo(px+8,py+p);c.moveTo(px+T-8,py+p);c.lineTo(px+T,py+p);}}c.stroke();}
-      const intersection=(left||right)&&(up||down);
-      if(!intersection){c.strokeStyle='#d7d6b887';c.lineWidth=1.4;c.setLineDash([8,7]);c.beginPath();if(left||right){c.moveTo(px,py+T/2);c.lineTo(px+T,py+T/2);}else{c.moveTo(px+T/2,py);c.lineTo(px+T/2,py+T);}c.stroke();c.setLineDash([]);}
-      else{c.fillStyle='#e8e8d0a8';for(let i=0;i<4;i++){if(up)c.fillRect(px+12+i*8,py+5,4,7);if(down)c.fillRect(px+12+i*8,py+T-12,4,7);if(left)c.fillRect(px+5,py+12+i*8,7,4);if(right)c.fillRect(px+T-12,py+12+i*8,7,4);}}
-      if(tiles[id(x,y)]==='bridge'){rounded(c,px+1,py,4,T,1,'#eff0dc');rounded(c,px+T-5,py,4,T,1,'#eff0dc');}
-      if(tiles[id(x,y)]==='mainRoad'){
-        c.strokeStyle='#f0d995';c.lineWidth=1;c.beginPath();
-        if(left||right){c.moveTo(px,py+T/2-2);c.lineTo(px+T,py+T/2-2);c.moveTo(px,py+T/2+2);c.lineTo(px+T,py+T/2+2);}
-        else{c.moveTo(px+T/2-2,py);c.lineTo(px+T/2-2,py+T);c.moveTo(px+T/2+2,py);c.lineTo(px+T/2+2,py+T);}c.stroke();
-        c.strokeStyle='#e0e6d184';c.setLineDash([5,6]);c.beginPath();if(left||right){for(const offset of [14,42]){c.moveTo(px,py+offset);c.lineTo(px+T,py+offset);}}else{for(const offset of [14,42]){c.moveTo(px+offset,py);c.lineTo(px+offset,py+T);}}c.stroke();c.setLineDash([]);
-      }
+      if(left&&up&&road(x-1,y-1))c.fillRect(px,py,inset,inset);if(right&&up&&road(x+1,y-1))c.fillRect(px+T-inset,py,inset,inset);if(right&&down&&road(x+1,y+1))c.fillRect(px+T-inset,py+T-inset,inset,inset);if(left&&down&&road(x-1,y+1))c.fillRect(px,py+T-inset,inset,inset);
       if(tiles[id(x,y)]==='roundabout'){
         c.fillStyle='#d3d8c0';c.beginPath();c.arc(px+T/2,py+T/2,15,0,7);c.fill();c.fillStyle='#87a66a';c.beginPath();c.arc(px+T/2,py+T/2,11,0,7);c.fill();this.tree(c,px+T/2,py+T/2,.55);
       }
     }
-    for(const b of [...this.game.buildings].sort((a,b)=>a.y-b.y))this.building(c,b);
+    for(const b of [...this.game.buildings].sort((a,b)=>a.y-b.y))if(!(b.type===3&&b.footprint===4))this.building(c,b);
     // Street names are baked once with the neighborhood.
-    c.font='500 8px Arial';c.textAlign='center';c.fillStyle='#e5e9d6bd';if(this.game.mode==='planner')c.fillText('F O U N D E R S   R O A D',20*T,20*T+31);else{c.fillText('W I L L O W   B O U L E V A R D',20*T,16*T+31);c.fillText('O A K   A V E N U E',20*T,10*T+31);}
     this.dirty=false;
   }
   building(c,b){
-    if(this.game.mode==='planner'&&!b.project){drawPlannerBuilding(c,b);return;}
+    if(this.game.mode==='planner'&&!b.project){c.save();c.beginPath();c.rect(b.x*T,b.y*T,(b.footprint||1)*T,(b.footprint||1)*T);c.clip();drawPlannerBuilding(c,b);c.restore();return;}
     const x=b.x*T,y=b.y*T,palettes=[['#e8d2ac','#c79c75'],['#b4c9c2','#7eaaa6'],['#d7b2a2','#b78275'],['#d7d6bd','#aaa98b']];
     if(b.project){
       const paint=['#c7d7ca','#9cc5bc','#d4a18b','#d5c48e','#b6a5ca'][b.paint||0];rounded(c,x+7,y+9,49,43,6,'#304b3a24');rounded(c,x+2,y+2,49,43,5,paint,'#879e88');
@@ -103,12 +98,9 @@ export class Renderer {
   }
   drawFlyovers(c){
     for(const span of this.game.flyovers){
-      const a=point(span.nodes[0]),b=point(span.nodes.at(-1));
-      const x=(a.x+.5)*T,y=(a.y+.5)*T,ex=(b.x+.5)*T,ey=(b.y+.5)*T;
-      c.lineCap='round';c.strokeStyle='#263e3540';c.lineWidth=44;c.beginPath();c.moveTo(x+7,y+11);c.lineTo(ex+7,ey+11);c.stroke();
-      c.strokeStyle='#e9e5cb';c.lineWidth=44;c.beginPath();c.moveTo(x,y);c.lineTo(ex,ey);c.stroke();c.strokeStyle='#718187';c.lineWidth=35;c.stroke();
-      c.strokeStyle='#f4e7b5';c.lineWidth=1.5;c.setLineDash([9,8]);c.stroke();c.setLineDash([]);c.lineCap='butt';
-      for(const n of [span.nodes[0],span.nodes.at(-1)]){const p=point(n);c.save();c.translate((p.x+.5)*T,(p.y+.5)*T);c.rotate(a.x===b.x?Math.PI/2:0);c.fillStyle='#f1c855';for(let i=0;i<3;i++){c.beginPath();c.moveTo(-8+i*8,-13);c.lineTo(-3+i*8,0);c.lineTo(-8+i*8,13);c.lineTo(-5+i*8,13);c.lineTo(i*8,0);c.lineTo(-5+i*8,-13);c.fill();}c.restore();}
+      const path=(ox=0,oy=0)=>{c.beginPath();for(let i=0;i<span.nodes.length;i++){const p=point(span.nodes[i]),x=(p.x+.5)*T+ox,y=(p.y+.5)*T+oy;if(i)c.lineTo(x,y);else c.moveTo(x,y);}};
+      c.save();c.lineJoin='round';c.lineCap='round';path(7,11);c.strokeStyle='#263e3540';c.lineWidth=44;c.stroke();path();c.strokeStyle='#e9e5cb';c.lineWidth=44;c.stroke();c.strokeStyle='#718187';c.lineWidth=35;c.stroke();
+      for(const [n,next]of [[span.nodes[0],span.nodes[1]],[span.nodes.at(-1),span.nodes.at(-2)]]){const p=point(n),q=point(next);c.save();c.translate((p.x+.5)*T,(p.y+.5)*T);c.rotate(Math.atan2(q.y-p.y,q.x-p.x));c.fillStyle='#f1c855';for(let i=0;i<3;i++){c.beginPath();c.moveTo(-8+i*8,-13);c.lineTo(-3+i*8,0);c.lineTo(-8+i*8,13);c.lineTo(-5+i*8,13);c.lineTo(i*8,0);c.lineTo(-5+i*8,-13);c.fill();}c.restore();}c.restore();
     }
   }
   draw(alpha=1){
@@ -116,6 +108,9 @@ export class Renderer {
     if(this.dirty)this.bake();
     const c=this.ctx,cam=this.camera;c.setTransform(this.dpr,0,0,this.dpr,0,0);c.clearRect(0,0,this.width,this.height);
     c.translate(this.width/2,this.height/2);c.scale(cam.zoom,cam.zoom);c.translate(-cam.x,-cam.y);c.drawImage(this.terrain,0,0);
+    // Small park sprites draw directly into the visible frame, independently of
+    // the large terrain cache used by the Android WebView.
+    for(const b of this.game.buildings)if(b.type===3&&b.footprint===4)c.drawImage(this.parkSprite(b),b.x*T,b.y*T,4*T,4*T);
     this.viewLeft=cam.x-this.width/2/cam.zoom;this.viewRight=cam.x+this.width/2/cam.zoom;this.viewTop=cam.y-this.height/2/cam.zoom;this.viewBottom=cam.y+this.height/2/cam.zoom;
     if(this.game.settings.night){c.fillStyle='#18344966';c.fillRect(0,0,B.size*T,B.size*T);for(const b of this.game.buildings){c.fillStyle='#ffe7a782';c.fillRect(b.x*T+12,b.y*T+14,5,6);c.fillRect(b.x*T+25,b.y*T+14,5,6);}}
     if(this.districtView)for(const d of DISTRICTS){const [x,y,right,bottom]=d.bounds;c.strokeStyle='#f9f4dbb0';c.lineWidth=2;c.setLineDash([10,9]);c.strokeRect(x*T,y*T,(right-x+1)*T,(bottom-y+1)*T);c.setLineDash([]);c.fillStyle='#47664d';c.font='bold 13px Arial';c.textAlign='left';c.fillText(d.name,x*T+15,y*T+25);}
@@ -144,5 +139,5 @@ export class Renderer {
     const fade=c.createLinearGradient(0,0,0,Math.min(this.height*.45,260));fade.addColorStop(0,'#e9eed2b8');fade.addColorStop(.65,'#e9eed230');fade.addColorStop(1,'#e9eed200');c.fillStyle=fade;c.fillRect(0,0,this.width,260);
     this.drawMini();
   }
-  drawMini(){const c=this.mini.getContext('2d'),w=this.mini.width,h=this.mini.height;c.drawImage(this.terrain,0,0,w,h);for(const span of this.game.flyovers){const a=point(span.nodes[0]),b=point(span.nodes.at(-1));c.strokeStyle='#f1c861';c.lineWidth=2;c.beginPath();c.moveTo((a.x+.5)/B.size*w,(a.y+.5)/B.size*h);c.lineTo((b.x+.5)/B.size*w,(b.y+.5)/B.size*h);c.stroke();}c.strokeStyle='#fff9e7';c.lineWidth=2;const cam=this.camera;c.strokeRect((cam.x-this.width/2/cam.zoom)/(B.size*T)*w,(cam.y-this.height/2/cam.zoom)/(B.size*T)*h,this.width/cam.zoom/(B.size*T)*w,this.height/cam.zoom/(B.size*T)*h);for(const [n]of this.game.tolls){const p=point(n);c.fillStyle='#f7bd38';c.beginPath();c.arc(p.x/B.size*w,p.y/B.size*h,3,0,7);c.fill();}}
+  drawMini(){const c=this.mini.getContext('2d'),w=this.mini.width,h=this.mini.height;c.drawImage(this.terrain,0,0,w,h);for(const park of this.game.buildings)if(park.type===3&&park.footprint===4)c.drawImage(this.parkSprite(park),park.x/B.size*w,park.y/B.size*h,4/B.size*w,4/B.size*h);for(const span of this.game.flyovers){c.strokeStyle='#f1c861';c.lineWidth=2;c.beginPath();for(let i=0;i<span.nodes.length;i++){const p=point(span.nodes[i]);if(i)c.lineTo((p.x+.5)/B.size*w,(p.y+.5)/B.size*h);else c.moveTo((p.x+.5)/B.size*w,(p.y+.5)/B.size*h);}c.stroke();}c.strokeStyle='#fff9e7';c.lineWidth=2;const cam=this.camera;c.strokeRect((cam.x-this.width/2/cam.zoom)/(B.size*T)*w,(cam.y-this.height/2/cam.zoom)/(B.size*T)*h,this.width/cam.zoom/(B.size*T)*w,this.height/cam.zoom/(B.size*T)*h);for(const [n]of this.game.tolls){const p=point(n);c.fillStyle='#f7bd38';c.beginPath();c.arc(p.x/B.size*w,p.y/B.size*h,3,0,7);c.fill();}}
 }

@@ -28,21 +28,24 @@ export const growthMethods={
     this.businessRate*=1+ranks*B.districtRevenueBoost;
     this.demandBonus=1+Math.min(1.5,this.managedLevels*B.managedDemandPerLevel)+ranks*B.districtDemandBoost+this.projectEffects.demand;
   },
-  validateBuilding(n,kind){
+  validateBuilding(n,kind,options={}){
     if(!BUILDINGS[kind]||!Number.isInteger(n)||n<0||n>=B.layerOffset)return 'Choose a building and a city tile.';
     const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot);
     if(plot.x+plot.footprint>B.size||plot.y+plot.footprint>B.size)return 'Keep the entire 4 × 4 park inside the city.';
     if(cells.some(a=>this.tiles[a]!=='grass'))return kind==='park'?'A City Park needs 16 empty tiles in a 4 × 4 square.':'Buildings need empty grass next to a road.';
-    if(cells.some(a=>this.trees.has(a)))return 'Clear the trees on this plot before placing a building.';
+    const clear=kind==='park'&&options.clearTrees;
+    if(!clear&&cells.some(a=>this.trees.has(a)))return 'Clear the trees on this plot before placing a building.';
     if(kind!=='park'&&!plotPerimeter(plot).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
     if(this.flyovers.some(s=>s.nodes.some(a=>cells.includes(a))))return 'Keep the flyover corridor clear.';
-    if(this.coins<BUILDINGS[kind].price)return `You need ${BUILDINGS[kind].price} coins for this building.`;
+    const price=BUILDINGS[kind].price+(clear?cells.reduce((sum,a)=>sum+this.treeRemovalCost(a),0):0);
+    if(this.coins<price)return `You need ${price} coins for this building${clear?' and site clearing':''}.`;
     return null;
   },
-  buildBuilding(n,kind){
-    const error=this.validateBuilding(n,kind);if(error)return error;
+  buildBuilding(n,kind,options={}){
+    const error=this.validateBuilding(n,kind,options);if(error)return error;
     const before=this.snapshot(),spec=BUILDINGS[kind],x=n%B.size,y=Math.floor(n/B.size);
-    const plot=plannedPlot(n,kind,this.mode);this.coins-=spec.price;for(const cell of plotCells(plot))this.tiles[cell]='building';this.buildings.push({x,y,footprint:plot.footprint,type:spec.type,kind,variant:0,level:1,managed:true,investment:spec.price,paint:0,visitors:0,revenue:0});
+    const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot),clear=kind==='park'&&options.clearTrees;
+    this.coins-=spec.price+(clear?cells.reduce((sum,a)=>sum+this.treeRemovalCost(a),0):0);for(const cell of cells){if(clear)this.trees.delete(cell);this.tiles[cell]='building';}this.buildings.push({x,y,footprint:plot.footprint,type:spec.type,kind,variant:0,level:1,managed:true,investment:spec.price,paint:0,visitors:0,revenue:0});
     this.record(before);this.rebuild();return null;
   },
   buildingUpgradeCost(b){if(b.project)return PROJECTS[b.project].costs[(b.projectStage||0)+1]||0;const spec=Object.values(BUILDINGS).find(s=>s.type===b.type);return Math.round(spec.price*Math.pow(B.buildingUpgradeFactor,b.level||1));},

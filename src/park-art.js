@@ -3,7 +3,8 @@ const rect=(c,x,y,w,h,r,fill,stroke)=>{c.beginPath();c.roundRect(x,y,w,h,r);c.fi
 export function drawCityPark(c,b){
   const t=B.tile,s=(b.footprint||4)*t,x=b.x*t,y=b.y*t,level=b.level||1;
   c.save();c.translate(x,y);c.scale(s/224,s/224);
-  rect(c,2,2,220,220,8,'#90b66c','#5f8c52');rect(c,7,7,210,210,5,'#a9ca7c');
+  const lawns=['#a9ca7c','#7bbda9','#c9b0d5','#dcb77b','#92b7d0'],borders=['#90b66c','#579d83','#9b7ead','#ad884f','#648ba4'];
+  rect(c,2,2,220,220,8,borders[level-1],'#5f8c52');rect(c,7,7,210,210,5,lawns[level-1]);
   // Broad promenade loop and four paths meet at the fountain plaza.
   c.strokeStyle='#ded8b1';c.lineWidth=12;c.lineJoin='round';c.strokeRect(28,28,168,168);
   c.beginPath();c.moveTo(0,112);c.lineTo(224,112);c.moveTo(112,0);c.lineTo(112,224);c.stroke();
@@ -29,5 +30,9 @@ export function drawCityPark(c,b){
   for(const [a,d]of [[94,53],[131,191],[48,94],[171,127],...(level>2?[[94,169],[169,94]]:[])]){rect(c,a,d,13,4,1,'#967755');rect(c,a+1,d-2,11,2,1,'#bd9b64');}
   for(const [a,d]of [[30,109],[194,109],[109,30],[109,194]]){rect(c,a,d,3,8,1,'#5b6f58');c.fillStyle=level>=4?'#f2d77b':'#e4dec0';c.beginPath();c.arc(a+1.5,d,3,0,7);c.fill();}
   c.font='bold 8px Arial';c.textAlign='center';c.fillStyle='#385d3b';c.fillText('CITY PARK · '+level,61,126);
+  if(level>=2){rect(c,140,182,38,8,2,'#caa06b','#877154');for(let i=0;i<4;i++)rect(c,142+i*9,179,5,5,1,'#f0da95');}
+  if(level>=3){rect(c,42,43,44,22,4,'#bf8f76','#8b725d');rect(c,39,40,50,7,2,'#e7c474');c.fillStyle='#fff0cb';c.font='bold 7px Arial';c.fillText('GARDEN CAFE',64,60);}
+  if(level>=4){for(let i=0;i<6;i++){c.fillStyle=i%2?'#e6a5b9':'#e3cc81';c.beginPath();c.arc(90+i*9,14,4,0,7);c.fill();}rect(c,6,103,15,18,4,'#ddc270','#93794a');rect(c,203,103,15,18,4,'#ddc270','#93794a');}
+  if(level>=5){c.strokeStyle='#eed78d';c.lineWidth=3;c.strokeRect(4,4,216,216);rect(c,82,201,60,16,3,'#f0db9a','#a58951');c.fillStyle='#71633e';c.font='bold 8px Arial';c.fillText('ROYAL GARDENS',112,212);}
   c.restore();
 }

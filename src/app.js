@@ -24,7 +24,7 @@ $('#city').append(treesPanel);hydrateIcons();
 let treeNode=null,resumeAfterClear=null,treeArea=[];
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
-let tool=null,selected=null,spanStart=null,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null;
+let tool=null,selected=null,spanStart=null,spanBend=null,bentFlyover=false,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null;
 const money=n=>Math.floor(n).toLocaleString('en-US'),time=n=>n?`${n.toFixed(1)}s`:'—';
 function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4500);}
 function save(){clearTimeout(saveTimer);saveTimer=null;const ok=storage.save(game);$('#save-label').textContent=ok?'Progress autosaved':'Storage unavailable';return ok;}
@@ -33,12 +33,12 @@ function changed(){renderer.dirty=true;scheduleSave();updateUI();}
 function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel'])$('#'+id).hidden=true;}
 function chooseTool(next){
   finishStroke(false);
-  tool=tool===next?null:next;spanStart=null;renderer.ghost=null;renderer.spanPreview=null;closePanel();closeSheets();
+  tool=tool===next?null:next;spanStart=null;spanBend=null;renderer.ghost=null;renderer.spanPreview=null;closePanel();closeSheets();
   for(const b of document.querySelectorAll('[data-tool]')){b.classList.toggle('active',b.dataset.tool===tool);b.setAttribute('aria-pressed',String(b.dataset.tool===tool));}
   $('#build-guide').hidden=!tool;$('#hint').hidden=!!tool||renderer.heat;
   const item=catalog.find(i=>i.id===tool);
   $('#build-instruction').textContent=tool==='park'?'City Park · 4 × 4 tiles · Road connection can come later':item?item.name:'';
-  $('#map').style.cursor=tool?'crosshair':'grab';
+  $('#map').style.cursor=tool?'crosshair':'grab';$('#flyover-bend').hidden=tool!=='flyover';$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';
   tutorial?.update();
 }
 function closePanel(){selected=null;renderer.selected=null;$('#road-panel').hidden=true;}
@@ -46,9 +46,10 @@ function openTrees(n,resume=null){
   const cells=resume==='park'?plotCells(plannedPlot(n,'park',game.mode)):[n];
   if(!cells.some(a=>game.trees.has(a)))return;if(tool)chooseTool(null);closePanel();closeSheets();treeNode=n;treeArea=cells;resumeAfterClear=resume;renderer.selected=n;$('#tree-panel').hidden=false;updateTrees();
 }
-function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const cost=treeArea.reduce((s,n)=>s+game.treeRemovalCost(n),0),count=treeArea.reduce((s,n)=>s+game.treeCount(n),0);$('#tree-info').textContent=count+' trees · $15 per tree'+(treeArea.length===16?' · 4 × 4 park area':'');$('#clear-plot').textContent='Clear plot · $'+cost;$('#clear-plot').disabled=game.coins<cost;}
+function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const park=resumeAfterClear==='park',clearing=treeArea.reduce((s,n)=>s+game.treeRemovalCost(n),0),cost=clearing+(park?B.parkPrice:0),count=treeArea.reduce((s,n)=>s+game.treeCount(n),0);$('#tree-info').textContent=count+' trees · $'+clearing+' clearing'+(park?' + $'+B.parkPrice+' park · 16 tiles':'');$('#tree-panel h2').textContent=park?'Build City Park':'Wooded plot';$('#tree-panel .tree-note').textContent=park?'This payment clears the selected area and builds the park immediately. Connect a road later for visitors.':'Clear these trees before placing roads or buildings. The land stays clear after saving.';$('#clear-plot').textContent=(park?'Clear & build park · $':'Clear plot · $')+cost;$('#clear-plot').disabled=game.coins<cost;}
 $('#close-trees').onclick=()=>{$('#tree-panel').hidden=true;renderer.selected=null;treeNode=null;};
-$('#clear-plot').onclick=()=>{const error=game.clearTreeArea(treeArea);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
+$('#clear-plot').onclick=()=>{const park=resumeAfterClear==='park',node=treeNode,error=park?game.buildBuilding(node,'park',{clearTrees:true}):game.clearTreeArea(treeArea);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;if(park){revealPark(node);return;}changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
+function revealPark(node){chooseTool(null);const park=game.buildingAt(node);if(park)renderer.focusBuilding(park);changed();toast('City Park built · 16 tiles. Connect a city road for visitors.');}
 function openPanel(n){
   if(!isRoad(game.tiles[n]))return;
   if(tool)chooseTool(null);closeSheets();selected=n;renderer.selected=n;$('#road-panel').hidden=false;
@@ -125,15 +126,17 @@ function updateUI(){
 function build(n,quiet=false){
   if(n<0)return;
   if(tool==='flyover'||tool==='bridge'){
-    if(spanStart===null){if(!isRoad(game.tiles[n])){toast('Start the span on an existing road.');return;}spanStart=n;renderer.selected=n;$('#build-instruction').textContent=tool==='flyover'?'Flyover · Tap an aligned road for the second ramp.':'Bridge · Tap the opposite bank in this row or column.';return;}
+    if(spanStart===null){if(!isRoad(game.tiles[n])){toast('Start the span on an existing road.');return;}spanStart=n;renderer.selected=n;$('#build-instruction').textContent=tool==='flyover'?(bentFlyover?'Flyover · Tap an aligned clear tile for the bend.':'Flyover · Tap an aligned road for the second ramp.'):'Bridge · Tap the opposite bank in this row or column.';return;}
     if(n===spanStart){const current=tool;chooseTool(null);chooseTool(current);return;}
-    const error=game.buildSpan(spanStart,n,tool);if(error){toast(error);return;}
+    if(tool==='flyover'&&bentFlyover&&spanBend===null){const a=point(spanStart),b=point(n);if((a.x!==b.x&&a.y!==b.y)||!['grass','road','mainRoad','roundabout'].includes(game.tiles[n])||game.trees.has(n)){toast('Choose a clear bend tile aligned with the first ramp.');return;}spanBend=n;renderer.selected=n;$('#build-instruction').textContent='Flyover · Tap the exit road aligned with this bend.';return;}
+    const error=tool==='flyover'&&bentFlyover?game.buildBentFlyover(spanStart,spanBend,n):game.buildSpan(spanStart,n,tool);if(error){toast(error);return;}
     const label=tool;chooseTool(null);changed();toast(`${label==='flyover'?'Flyover':'Bridge'} connected. New routes are open!`);return;
   }
   if(tool==='toll'&&game.tolls.has(n)){openPanel(n);return;}
   if(tool==='clear-trees'&&game.trees.has(n)){openTrees(n,'clear-trees');return false;}
   const currentTool=tool,error=game.build(n,tool);
   if(error){const wooded=currentTool==='park'?error.startsWith('Clear the trees'):game.trees.has(n)&&currentTool!=='demolish';if(wooded){if(!quiet)openTrees(n,currentTool);else toast('Clear these trees before building here. Tap them to see the cost.');}else if(!quiet)toast(error);return false;}
+  if(currentTool==='park'){revealPark(n);return true;}
   changed();
   cityUI?.audio.play(game.settings.sound,'build');
   if(currentTool==='toll'){chooseTool(null);openPanel(n);toast('Open for business! Adjust the toll and watch drivers adapt.');}
@@ -163,8 +166,9 @@ canvas.addEventListener('pointermove',e=>{
   const p=local(e),n=renderer.tileAt(p.x,p.y);
   if(tool&&n>=0){
     const span=tool==='flyover'||tool==='bridge';
-    renderer.ghost={node:n,park:tool==='park'&&game.mode==='planner',valid:span?spanStart===null?isRoad(game.tiles[n]):!game.planSpan(spanStart,n,tool).error:!game.validate(n,tool)};
-    if(span&&spanStart!==null)renderer.spanPreview=game.planSpan(spanStart,n,tool);
+    const bent=tool==='flyover'&&bentFlyover;const plan=bent&&spanBend!==null?game.planBentFlyover(spanStart,spanBend,n):game.planSpan(spanStart??n,n,tool);
+    renderer.ghost={node:n,park:tool==='park'&&game.mode==='planner',valid:span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:!game.validate(n,tool)};
+    if(span&&spanStart!==null)renderer.spanPreview=bent&&spanBend===null?null:plan;
   }
   if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,p);
   if(pointers.size>=2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);if(pinch&&pinch.distance>0)renderer.zoom((dist/pinch.distance-1)*renderer.camera.zoom,(a.x+b.x)/2,(a.y+b.y)/2,true);pinch={distance:dist};if(gesture){gesture.moved=true;gesture.wasPinch=true;}return;}
@@ -187,6 +191,7 @@ $('#zoom-in').onclick=()=>renderer.zoom(B.zoomStep);$('#zoom-out').onclick=()=>r
 $('#heatmap').onclick=()=>{$('#build-sheet').hidden=true;renderer.heat=!renderer.heat;$('#heatmap').classList.toggle('active',renderer.heat);$('#heatmap').setAttribute('aria-pressed',String(renderer.heat));$('#heat-legend').hidden=!renderer.heat;$('#hint').hidden=renderer.heat||!!tool;toast(renderer.heat?'Traffic view: ● free · ▨ busy · ▧ jammed. Striped tiles show congestion.':'Back to city view.');};
 for(const button of document.querySelectorAll('[data-tool]'))button.onclick=()=>chooseTool(button.dataset.tool);
 for(const button of document.querySelectorAll('[data-direct-build]'))button.onclick=()=>chooseTool(button.dataset.directBuild);
+$('#flyover-bend').onclick=()=>{bentFlyover=!bentFlyover;spanStart=null;spanBend=null;renderer.spanPreview=null;$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';$('#build-instruction').textContent=bentFlyover?'Flyover · Choose start road, bend tile, then exit road.':'Flyover · Choose two aligned roads.';};
 $('#cancel-build').onclick=()=>chooseTool(null);$('#close-panel').onclick=closePanel;
 $('#more-tools').onclick=()=>{const open=$('#build-sheet').hidden;if(tool)chooseTool(null);closePanel();closeSheets();$('#build-sheet').hidden=!open;if(open)renderBuildMenu();};
 $('#close-build').onclick=()=>$('#build-sheet').hidden=true;
