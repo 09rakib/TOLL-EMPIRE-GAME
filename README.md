@@ -1,4 +1,4 @@
-# Toll Empire · v0.5.0: forest and city editing
+# Toll Empire · v0.6.0: large parks and walking streets
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
@@ -22,6 +22,14 @@ On Windows use `gradlew.bat assembleDebug`. Set `JAVA_HOME` and `ANDROID_HOME` t
 Build tasks copy current root `index.html`, `src/` and `public/` into generated Android assets automatically, disabling the browser service worker inside that copy. The source tree remains shared. Backgrounding saves progress, and Android local storage survives force-stop/relaunch. The app supports Android 7.0/API 24 and newer with a current Android System WebView.
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
+
+## City Parks and footpaths (v0.6.0)
+
+New City Parks occupy a complete 4 × 4 square: 16 tiles. The original Canvas park includes a pond, fountain plaza, gazebo, flower beds, sports court, playground, hedges, benches and walking paths. Choose its top-left tile. Every cell must be inside the city, clear of trees and free of roads/buildings/flyovers. The placement preview outlines the full 16-tile footprint. For a wooded park site, the clearing panel quotes the combined tree-removal cost for all 16 cells as one undoable action.
+
+Parks can be built before a road exists. They receive no visitors or connected park benefits until any perimeter tile touches a road connected to a city entrance. An isolated road does not activate them. People follow actual ground-road routes on footpaths, enter the park, walk around it and return. Disconnecting or removing roads/parks invalidates affected walking trips. The inspector shows real park walking visits; visitors do not generate park income. Local roads now have paved sidewalks and animated pedestrians. Walking traffic pauses with the city and respects low-power caps.
+
+Tap any of the 16 park tiles to select, upgrade, paint or remove the same park. Removing it refunds once and clears all 16 tiles; Undo restores the entire park. Older one-tile pocket parks remain in place so upgrades do not overwrite neighboring streets or buildings. Remove/rebuild those as City Parks when enough cleared space is available. Walking agents are session-local; park visit totals persist.
 
 ## Forest and city editing (v0.5.0)
 
@@ -81,7 +89,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-66 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
+73 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 

@@ -11,6 +11,7 @@ import {traceTiles} from './brush.js';
 import {setupTutorial} from './tutorial.js';
 import {PROJECTS} from './projects.js';
 import {drawUpgradeComparison} from './architecture.js';
+import {plotCells,plannedPlot} from './plots.js';
 const $=s=>document.querySelector(s);
 // Keep secondary actions in the build menu instead of over the city.
 for(const [id,icon,label]of [['undo','undo','Undo'],['shop','star','City upgrades'],['city-board','flag','City development'],['customize','paint','Customize'],['heatmap','layers','Traffic view']]){
@@ -20,7 +21,7 @@ const showGoal=document.createElement('button');showGoal.id='show-objective';sho
 hydrateIcons();
 const treesPanel=document.createElement('aside');treesPanel.id='tree-panel';treesPanel.className='panel';treesPanel.hidden=true;treesPanel.setAttribute('aria-label','Clear wooded plot');treesPanel.innerHTML='<button class="panel-close" id="close-trees" aria-label="Close tree details">×</button><span class="eyebrow">PREPARE YOUR LAND</span><h2>Wooded plot</h2><div class="tree-illustration" data-icon="tree"></div><p id="tree-info"></p><p class="tree-note">Clearing is required before building roads, homes, hospitals or hotels here. The land stays clear after saving.</p><button class="primary" id="clear-plot"></button>';
 $('#city').append(treesPanel);hydrateIcons();
-let treeNode=null,resumeAfterClear=null;
+let treeNode=null,resumeAfterClear=null,treeArea=[];
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
 let tool=null,selected=null,spanStart=null,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null;
@@ -36,17 +37,18 @@ function chooseTool(next){
   for(const b of document.querySelectorAll('[data-tool]')){b.classList.toggle('active',b.dataset.tool===tool);b.setAttribute('aria-pressed',String(b.dataset.tool===tool));}
   $('#build-guide').hidden=!tool;$('#hint').hidden=!!tool||renderer.heat;
   const item=catalog.find(i=>i.id===tool);
-  $('#build-instruction').textContent=item?item.name:'';
+  $('#build-instruction').textContent=tool==='park'?'City Park · 4 × 4 tiles · Road connection can come later':item?item.name:'';
   $('#map').style.cursor=tool?'crosshair':'grab';
   tutorial?.update();
 }
 function closePanel(){selected=null;renderer.selected=null;$('#road-panel').hidden=true;}
 function openTrees(n,resume=null){
-  if(!game.trees.has(n))return;if(tool)chooseTool(null);closePanel();closeSheets();treeNode=n;resumeAfterClear=resume;renderer.selected=n;$('#tree-panel').hidden=false;updateTrees();
+  const cells=resume==='park'?plotCells(plannedPlot(n,'park',game.mode)):[n];
+  if(!cells.some(a=>game.trees.has(a)))return;if(tool)chooseTool(null);closePanel();closeSheets();treeNode=n;treeArea=cells;resumeAfterClear=resume;renderer.selected=n;$('#tree-panel').hidden=false;updateTrees();
 }
-function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const cost=game.treeRemovalCost(treeNode);$('#tree-info').textContent=game.treeCount(treeNode)+' trees · $15 per tree';$('#clear-plot').textContent='Clear plot · $'+cost;$('#clear-plot').disabled=game.coins<cost;}
+function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const cost=treeArea.reduce((s,n)=>s+game.treeRemovalCost(n),0),count=treeArea.reduce((s,n)=>s+game.treeCount(n),0);$('#tree-info').textContent=count+' trees · $15 per tree'+(treeArea.length===16?' · 4 × 4 park area':'');$('#clear-plot').textContent='Clear plot · $'+cost;$('#clear-plot').disabled=game.coins<cost;}
 $('#close-trees').onclick=()=>{$('#tree-panel').hidden=true;renderer.selected=null;treeNode=null;};
-$('#clear-plot').onclick=()=>{const error=game.clearTrees(treeNode);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
+$('#clear-plot').onclick=()=>{const error=game.clearTreeArea(treeArea);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
 function openPanel(n){
   if(!isRoad(game.tiles[n]))return;
   if(tool)chooseTool(null);closeSheets();selected=n;renderer.selected=n;$('#road-panel').hidden=false;
@@ -131,7 +133,7 @@ function build(n,quiet=false){
   if(tool==='toll'&&game.tolls.has(n)){openPanel(n);return;}
   if(tool==='clear-trees'&&game.trees.has(n)){openTrees(n,'clear-trees');return false;}
   const currentTool=tool,error=game.build(n,tool);
-  if(error){if(game.trees.has(n)&&currentTool!=='demolish'){if(!quiet)openTrees(n,currentTool);else toast('Clear these trees before building here. Tap them to see the cost.');}else if(!quiet)toast(error);return false;}
+  if(error){const wooded=currentTool==='park'?error.startsWith('Clear the trees'):game.trees.has(n)&&currentTool!=='demolish';if(wooded){if(!quiet)openTrees(n,currentTool);else toast('Clear these trees before building here. Tap them to see the cost.');}else if(!quiet)toast(error);return false;}
   changed();
   cityUI?.audio.play(game.settings.sound,'build');
   if(currentTool==='toll'){chooseTool(null);openPanel(n);toast('Open for business! Adjust the toll and watch drivers adapt.');}
@@ -161,7 +163,7 @@ canvas.addEventListener('pointermove',e=>{
   const p=local(e),n=renderer.tileAt(p.x,p.y);
   if(tool&&n>=0){
     const span=tool==='flyover'||tool==='bridge';
-    renderer.ghost={node:n,valid:span?spanStart===null?isRoad(game.tiles[n]):!game.planSpan(spanStart,n,tool).error:!game.validate(n,tool)};
+    renderer.ghost={node:n,park:tool==='park'&&game.mode==='planner',valid:span?spanStart===null?isRoad(game.tiles[n]):!game.planSpan(spanStart,n,tool).error:!game.validate(n,tool)};
     if(span&&spanStart!==null)renderer.spanPreview=game.planSpan(spanStart,n,tool);
   }
   if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,p);

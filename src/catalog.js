@@ -7,7 +7,7 @@ export const catalog=[
   {id:'office',name:'Office',icon:'office',category:'city',cost:B.officePrice,unit:'14 / worker',hint:'Earn when workers arrive. Higher levels become larger glass office towers.'},
   {id:'clinic',name:'Hospital',icon:'hospital',plannerOnly:true,category:'city',cost:B.hospitalPrice,unit:'24 / patient',hint:'Patients must reach the hospital. Upgrade beds, fees and the building itself.'},
   {id:'hotel',name:'Hotel',icon:'hotel',plannerOnly:true,category:'city',cost:B.hotelPrice,unit:'20 / guest',hint:'Earn from arriving guests. Develop a guesthouse into a luxury hotel.'},
-  {id:'park',name:'City park',icon:'tree',category:'city',cost:B.parkPrice,unit:'Better flow',hint:'Beautify your city and reduce congestion slowdown.'},
+  {id:'park',name:'City Park',icon:'tree',category:'city',cost:B.parkPrice,unit:'4 × 4 · 16 tiles',hint:'A landscaped park with pond, fountain, sports and play areas. Place anywhere on clear land; connect a road for walking visitors.'},
   {id:'road',name:'Local road',icon:'road',category:'roads',cost:B.roadPrice,unit:'/ tile',hint:'Two lanes. Connect to any existing road.'},
   {id:'main',name:'Main road',icon:'road',category:'roads',cost:B.mainPrice,unit:'/ tile',hint:'Four lanes, twice the capacity. Can upgrade local roads.'},
   {id:'flyover',name:'Flyover',icon:'flyover',category:'roads',cost:B.flyoverPrice,unit:'/ tile',hint:'Tap two aligned roads. Only ramp ends connect to ground.'},

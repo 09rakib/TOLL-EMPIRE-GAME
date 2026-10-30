@@ -2,16 +2,17 @@ import {B} from './balance.js';
 import {id,isRoad} from './world.js';
 import {DISTRICTS,POLICIES,EVENTS,ACHIEVEMENTS,levelForXp,ensureContracts,newContract,contractProgress,districtFor} from './campaign.js';
 import {PROJECTS} from './projects.js';
+import {plotSize,plotCells,plotPerimeter,plannedPlot} from './plots.js';
 export const BUILDINGS={home:{type:0,name:'Home',price:B.homePrice},shop:{type:1,name:'Shop',price:B.shopPrice},office:{type:2,name:'Office',price:B.officePrice},park:{type:3,name:'Park',price:B.parkPrice},clinic:{type:4,name:'Hospital',price:B.hospitalPrice},hotel:{type:5,name:'Hotel',price:B.hotelPrice}};
 export const growthMethods={
   metrics(){return {served:this.served,earned:Math.floor(this.earned),trips:this.campaign.trips,roads:this.tiles.filter(isRoad).length,main:this.tiles.filter(t=>t==='mainRoad').length,managed:this.buildings.filter(b=>b.managed&&(!b.project||b.projectStage===2)).length,buildingLevels:this.buildings.reduce((n,b)=>n+(b.managed?(b.level||1)-1:0),0),boothLevels:[...this.tolls.values()].reduce((s,t)=>s+t.level-1,0)};},
-  buildingAt(n){return this.buildings.find(b=>id(b.x,b.y)===n);},
-  buildingEntrance(b){return this.neighbors(id(b.x,b.y)).find(n=>this.cityConnected?.has(n))??null;},
+  buildingAt(n){const x=n%B.size,y=Math.floor(n/B.size);return this.buildings.find(b=>x>=b.x&&y>=b.y&&x<b.x+plotSize(b)&&y<b.y+plotSize(b));},
+  buildingEntrance(b){return plotPerimeter(b).find(n=>this.cityConnected?.has(n))??null;},
   refreshDevelopment(){
     const connected=new Set(),queue=this.endpoints.filter(n=>this.graph.has(n));for(const n of queue)connected.add(n);
     for(let i=0;i<queue.length;i++)for(const n of this.graph.get(queue[i])||[])if(!connected.has(n)){connected.add(n);queue.push(n);}this.cityConnected=connected;
     this.destinations=[];this.businessRate=0;this.managedLevels=0;this.population=0;this.parkLevels=0;
-    this.homeLevels=0;this.commercialLevels=0;this.homeDestinations=[];this.businessDestinations=[];
+    this.homeLevels=0;this.commercialLevels=0;this.homeDestinations=[];this.businessDestinations=[];this.parkDestinations=[];
     this.projectEffects={capacity:0,speed:0,repair:0,demand:0};
     const ranks=Object.values(this.campaign.districts).reduce((s,v)=>s+v,0);
     for(const b of this.buildings){
@@ -20,7 +21,7 @@ export const growthMethods={
       if(b.project){if(b.projectStage===2){const spec=PROJECTS[b.project];this.businessRate+=spec.income;for(const key of Object.keys(this.projectEffects))this.projectEffects[key]+=spec[key]||0;}continue;}
       this.managedLevels+=level;
       if(b.type===0){this.population+=level*20;this.homeLevels+=level;this.homeDestinations.push(entrance);}
-      if(b.type===3)this.parkLevels+=level;
+      if(b.type===3){this.parkLevels+=level;this.parkDestinations.push({node:entrance,building:id(b.x,b.y)});}
       if([1,2,4,5].includes(b.type)){this.commercialLevels+=level;this.businessDestinations.push({node:entrance,building:id(b.x,b.y)});}
       if(this.mode!=='planner')this.businessRate+=(B.buildingRevenue[b.type]||0)*Math.pow(1.45,level-1);
     }
@@ -29,17 +30,19 @@ export const growthMethods={
   },
   validateBuilding(n,kind){
     if(!BUILDINGS[kind]||!Number.isInteger(n)||n<0||n>=B.layerOffset)return 'Choose a building and a city tile.';
-    if(this.tiles[n]!=='grass')return 'Buildings need empty grass next to a road.';
-    if(this.trees.has(n))return 'Clear the trees on this plot before placing a building.';
-    if(!this.neighbors(n).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
-    if(this.flyovers.some(s=>s.nodes.includes(n)))return 'Keep the flyover corridor clear.';
+    const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot);
+    if(plot.x+plot.footprint>B.size||plot.y+plot.footprint>B.size)return 'Keep the entire 4 × 4 park inside the city.';
+    if(cells.some(a=>this.tiles[a]!=='grass'))return kind==='park'?'A City Park needs 16 empty tiles in a 4 × 4 square.':'Buildings need empty grass next to a road.';
+    if(cells.some(a=>this.trees.has(a)))return 'Clear the trees on this plot before placing a building.';
+    if(kind!=='park'&&!plotPerimeter(plot).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
+    if(this.flyovers.some(s=>s.nodes.some(a=>cells.includes(a))))return 'Keep the flyover corridor clear.';
     if(this.coins<BUILDINGS[kind].price)return `You need ${BUILDINGS[kind].price} coins for this building.`;
     return null;
   },
   buildBuilding(n,kind){
     const error=this.validateBuilding(n,kind);if(error)return error;
     const before=this.snapshot(),spec=BUILDINGS[kind],x=n%B.size,y=Math.floor(n/B.size);
-    this.coins-=spec.price;this.tiles[n]='building';this.buildings.push({x,y,type:spec.type,kind,variant:0,level:1,managed:true,investment:spec.price,paint:0,visitors:0,revenue:0});
+    const plot=plannedPlot(n,kind,this.mode);this.coins-=spec.price;for(const cell of plotCells(plot))this.tiles[cell]='building';this.buildings.push({x,y,footprint:plot.footprint,type:spec.type,kind,variant:0,level:1,managed:true,investment:spec.price,paint:0,visitors:0,revenue:0});
     this.record(before);this.rebuild();return null;
   },
   buildingUpgradeCost(b){if(b.project)return PROJECTS[b.project].costs[(b.projectStage||0)+1]||0;const spec=Object.values(BUILDINGS).find(s=>s.type===b.type);return Math.round(spec.price*Math.pow(B.buildingUpgradeFactor,b.level||1));},

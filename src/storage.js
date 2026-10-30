@@ -1,6 +1,7 @@
 import {B} from './balance.js';
 import {createCampaign,createSettings} from './campaign.js';
 import {PROJECTS} from './projects.js';
+import {plotCells} from './plots.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
 export function serialize(game){return {version:3,mapSize:B.size,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
@@ -24,6 +25,8 @@ export function validateSave(data){
   if(data.trees!==undefined&&(!Array.isArray(data.trees)||data.trees.length>B.layerOffset||new Set(data.trees).size!==data.trees.length||data.trees.some(n=>!node(n)||data.tiles[n]!=='grass')))return false;
   if(data.tiles.some(t=>!legal.has(t))||data.buildings.some(b=>!b||!Number.isInteger(b.x)||!Number.isInteger(b.y)||b.x<0||b.y<0||b.x>=B.size||b.y>=B.size||!Number.isInteger(b.type)||b.type<0||b.type>5))return false;
   if(data.buildings.some(b=>b.level!==undefined&&(!Number.isInteger(b.level)||b.level<1||b.level>5)||b.paint!==undefined&&(!Number.isInteger(b.paint)||b.paint<0||b.paint>4)||b.variant!==undefined&&(!Number.isInteger(b.variant)||b.variant<0||b.variant>4)||b.investment!==undefined&&(!Number.isFinite(b.investment)||b.investment<0)))return false;
+  if(data.buildings.some(b=>b.footprint!==undefined&&(![1,4].includes(b.footprint)||b.footprint===4&&(b.type!==3||b.x+4>B.size||b.y+4>B.size))))return false;
+  const occupied=new Set();for(const b of data.buildings)for(const n of plotCells(b)){if(occupied.has(n)||b.footprint===4&&data.tiles[n]!=='building')return false;occupied.add(n);}
   if(data.buildings.some(b=>b.project&&(!PROJECTS[b.project]||!Number.isInteger(b.projectStage)||b.projectStage<0||b.projectStage>2||!b.projectBaseline||!Number.isFinite(b.projectBaseline.trips)||!Number.isFinite(b.projectBaseline.served))))return false;
   const projects=data.buildings.filter(b=>b.project).map(b=>b.project);if(new Set(projects).size!==projects.length)return false;
   if(!Array.isArray(data.tolls)||data.tolls.some(entry=>!Array.isArray(entry)||!node(entry[0])||!entry[1]||!Number.isInteger(entry[1].price)||entry[1].price<0||entry[1].price>(data.worldMode==='planner'?B.boothTollLimits[entry[1].level-1]:B.maxToll)||!Number.isInteger(entry[1].level)||entry[1].level<1||entry[1].level>5))return false;

@@ -8,6 +8,8 @@ import {growthMethods,BUILDINGS} from './growth.js';
 import {PROJECTS,projectMethods} from './projects.js';
 import {plannerMethods} from './planner.js';
 import {forestFor,forestMethods} from './forest.js';
+import {plotCells} from './plots.js';
+import {pedestrianMethods} from './pedestrians.js';
 export const upgradeTypes={
   faster:{name:'Faster Cars',description:'+10% driving speed per level',icon:'road'},
   booths:{name:'Bigger Toll Booths',description:'+15% service capacity per level',icon:'toll'},
@@ -21,6 +23,7 @@ export class Simulation {
     this.mode=saved?(saved.worldMode||'legacy'):'planner';
     this.tiles=[...city.tiles];this.buildings=structuredClone(city.buildings);this.coins=saved?.coins??B.startCoins;
     this.trees=new Set(saved?.trees??(this.mode==='planner'?forestFor(this.tiles):[]));
+    this.walkers=[];this.walkClock=0;
     this.tolls=new Map((saved?.tolls||[]).map(([n,t])=>[n,{...t,level:t.level||1}]));
     if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
     this.flyovers=structuredClone(saved?.flyovers||[]);this.signals=new Set(saved?.signals||[]);
@@ -45,6 +48,7 @@ export class Simulation {
     else{for(let i=0;i<32;i++){this.spawn();for(const c of this.cars)this.advance(c,.25);}}
     this.warming=false;
     for(const car of this.cars){this.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;}
+    if(this.mode==='planner')for(let i=0;i<4;i++){this.spawnWalker(true);const w=this.walkers.at(-1);if(w){w.index=Math.floor(w.path.length*(.4+i*.045));const p=w.path[w.index];w.x=p[0];w.y=p[1];}}
   }
   get cityLevel(){return levelForXp(this.campaign.xp);}
   get totalIncome(){return this.mode==='planner'?this.income+this.businessTracker.income:this.income+this.businessRate*POLICIES[this.settings.policy].revenue;}
@@ -125,6 +129,7 @@ export class Simulation {
     this.businessTracker.trim(this.time);
     while(this.visitEffects.length&&this.visitEffects[0].time<this.time-2)this.visitEffects.shift();
     this.updateGrowth(dt);
+    this.updateWalkers(dt);
   }
   syncCarPosition(car){const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],ax=from%B.size,ay=Math.floor((from%B.layerOffset)/B.size),bx=to%B.size,by=Math.floor((to%B.layerOffset)/B.size);car.worldX=ax+.5+(bx-ax)*car.progress-(by-ay)*9/B.tile;car.worldY=ay+.5+(by-ay)*car.progress+(bx-ax)*9/B.tile;car.angle=Math.atan2(by-ay,bx-ax);}
   get income(){return this.tracker.income;}
@@ -157,7 +162,7 @@ export class Simulation {
       const current=new Map(this.buildings.map(b=>[id(b.x,b.y),b]));
       this.buildings=previous.buildings.map(b=>{
         const live=current.get(id(b.x,b.y));
-        if(live)for(const key of ['visitors','revenue','turnedAway','paint'])if(live[key]!==undefined)b[key]=live[key];
+        if(live)for(const key of ['visitors','walkingVisits','revenue','turnedAway','paint'])if(live[key]!==undefined)b[key]=live[key];
         return b;
       });
     }
@@ -262,7 +267,7 @@ export class Simulation {
     const error=this.validate(n,'demolish');if(error)return error;
     const before=this.snapshot();let value=0;
     const fly=this.flyovers.find(s=>s.nodes.includes(n)),bridge=this.bridges.find(s=>s.nodes.includes(n));
-    if(this.tiles[n]==='building'){const b=this.buildingAt(n);value=b?.investment||0;this.buildings=this.buildings.filter(b=>id(b.x,b.y)!==n);this.tiles[n]='grass';}
+    if(this.tiles[n]==='building'){const b=this.buildingAt(n);value=b?.investment||0;if(b){for(const cell of plotCells(b))this.tiles[cell]='grass';this.buildings=this.buildings.filter(item=>item!==b);}}
     else if(fly){value=fly.cost;this.flyovers=this.flyovers.filter(s=>s!==fly);}
     else if(bridge){value=bridge.cost;for(const a of bridge.nodes.slice(1,-1)){this.tiles[a]='river';this.tolls.delete(a);this.signals.delete(a);}this.bridges=this.bridges.filter(s=>s!==bridge);}
     else if(this.tolls.has(n)){const t=this.tolls.get(n);value=B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0);this.tolls.delete(n);}
@@ -305,3 +310,4 @@ Object.assign(Simulation.prototype,growthMethods);
 Object.assign(Simulation.prototype,projectMethods);
 Object.assign(Simulation.prototype,plannerMethods);
   Object.assign(Simulation.prototype,forestMethods);
+  Object.assign(Simulation.prototype,pedestrianMethods);

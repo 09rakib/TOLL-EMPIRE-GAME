@@ -4,6 +4,7 @@ import {Simulation} from '../src/simulation.js';
 import {id} from '../src/world.js';
 import {B} from '../src/balance.js';
 import {serialize,validateSave} from '../src/storage.js';
+import {plotCells,plannedPlot} from '../src/plots.js';
 
 test('planner grows a dense persistent forest only on empty grass, including old saves',()=>{
   const g=new Simulation(null,()=>.4);
@@ -14,7 +15,7 @@ test('planner grows a dense persistent forest only on empty grass, including old
 });
 test('wooded plots block every building and road until the quoted clearing fee is paid',()=>{
   for(const kind of ['home','office','clinic','hotel','park','road','main']){
-    const g=new Simulation(null,()=>.4),n=id(18,19);g.coins=10000;g.trees.add(n);const balance=g.coins,cost=g.treeRemovalCost(n);
+    const g=new Simulation(null,()=>.4),n=id(18,kind==='park'?21:19);g.coins=10000;const area=plotCells(plannedPlot(n,kind));for(const cell of area)g.trees.delete(cell);g.trees.add(n);const balance=g.coins,cost=g.treeRemovalCost(n);
     assert.match(g.build(n,kind),/Clear the trees/);assert.equal(g.coins,balance);
     assert.equal(g.clearTrees(n),null);assert.equal(g.coins,balance-cost);assert.equal(g.trees.has(n),false);
     assert.equal(g.build(n,kind),null);
@@ -37,7 +38,7 @@ test('removing a road removes its fixtures and disconnects businesses; undo rest
 });
 test('removing any city building refunds investment, preserves cleared land and is undoable',()=>{
   for(const kind of ['home','office','clinic','hotel','park']){
-    const g=new Simulation(null,()=>.4),n=id(18,19);g.coins=10000;g.trees.add(n);g.clearTrees(n);g.build(n,kind);const value=g.buildingAt(n).investment,balance=g.coins;
+    const g=new Simulation(null,()=>.4),n=id(18,kind==='park'?21:19);g.coins=10000;for(const cell of plotCells(plannedPlot(n,kind)))g.trees.delete(cell);g.trees.add(n);g.clearTrees(n);g.build(n,kind);const value=g.buildingAt(n).investment,balance=g.coins;
     assert.equal(g.demolish(n),null);assert.equal(g.tiles[n],'grass');assert.equal(g.coins,balance+Math.round(value*B.refund));assert.equal(g.trees.has(n),false);
     g.undo();assert.equal(g.tiles[n],'building');assert.equal(g.buildingAt(n).kind,kind);
   }
