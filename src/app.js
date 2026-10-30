@@ -18,15 +18,18 @@ for(const [id,icon,label]of [['undo','undo','Undo'],['shop','star','City upgrade
 }
 const showGoal=document.createElement('button');showGoal.id='show-objective';showGoal.innerHTML='<span data-icon="flag"></span><span>Show objective</span>';$('#menu-actions').append(showGoal);
 hydrateIcons();
+const treesPanel=document.createElement('aside');treesPanel.id='tree-panel';treesPanel.className='panel';treesPanel.hidden=true;treesPanel.setAttribute('aria-label','Clear wooded plot');treesPanel.innerHTML='<button class="panel-close" id="close-trees" aria-label="Close tree details">×</button><span class="eyebrow">PREPARE YOUR LAND</span><h2>Wooded plot</h2><div class="tree-illustration" data-icon="tree"></div><p id="tree-info"></p><p class="tree-note">Clearing is required before building roads, homes, hospitals or hotels here. The land stays clear after saving.</p><button class="primary" id="clear-plot"></button>';
+$('#city').append(treesPanel);hydrateIcons();
+let treeNode=null,resumeAfterClear=null;
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
-let tool=null,selected=null,spanStart=null,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='roads',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null;
+let tool=null,selected=null,spanStart=null,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null;
 const money=n=>Math.floor(n).toLocaleString('en-US'),time=n=>n?`${n.toFixed(1)}s`:'—';
 function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4500);}
 function save(){clearTimeout(saveTimer);saveTimer=null;const ok=storage.save(game);$('#save-label').textContent=ok?'Progress autosaved':'Storage unavailable';return ok;}
 function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(save,350);}
 function changed(){renderer.dirty=true;scheduleSave();updateUI();}
-function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel'])$('#'+id).hidden=true;}
+function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel'])$('#'+id).hidden=true;}
 function chooseTool(next){
   finishStroke(false);
   tool=tool===next?null:next;spanStart=null;renderer.ghost=null;renderer.spanPreview=null;closePanel();closeSheets();
@@ -38,6 +41,12 @@ function chooseTool(next){
   tutorial?.update();
 }
 function closePanel(){selected=null;renderer.selected=null;$('#road-panel').hidden=true;}
+function openTrees(n,resume=null){
+  if(!game.trees.has(n))return;if(tool)chooseTool(null);closePanel();closeSheets();treeNode=n;resumeAfterClear=resume;renderer.selected=n;$('#tree-panel').hidden=false;updateTrees();
+}
+function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const cost=game.treeRemovalCost(treeNode);$('#tree-info').textContent=game.treeCount(treeNode)+' trees · $15 per tree';$('#clear-plot').textContent='Clear plot · $'+cost;$('#clear-plot').disabled=game.coins<cost;}
+$('#close-trees').onclick=()=>{$('#tree-panel').hidden=true;renderer.selected=null;treeNode=null;};
+$('#clear-plot').onclick=()=>{const error=game.clearTrees(treeNode);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
 function openPanel(n){
   if(!isRoad(game.tiles[n]))return;
   if(tool)chooseTool(null);closeSheets();selected=n;renderer.selected=n;$('#road-panel').hidden=false;
@@ -73,6 +82,7 @@ function updatePanel(){
     const refund=Math.round((B.tollPrice+B.boothUpgradePrices.slice(0,booth.level-1).reduce((s,v)=>s+v,0))*B.refund);
     $('#remove-toll').textContent=`Remove booth · refund ${refund} coins`;
   }
+  $('#remove-road').textContent='Remove road + fixtures · $ '+money(Math.round(game.roadRemovalCost(selected)*B.refund))+' refund';$('#remove-road').disabled=game.endpoints.includes(selected)||game.tiles[selected]==='bridge'||game.flyovers.some(s=>s.nodes.includes(selected))||game.bridges.some(s=>s.nodes.includes(selected));
   $('#panel-action').disabled=game.coins<B.tollPrice||game.tolls.size>=B.maxBooths;
   const samples=game.tracker.history.get(selected)||[],max=Math.max(1,...samples.map(s=>s.cars));
   const coordinates=samples.map((s,i)=>`${samples.length===1?0:i/(samples.length-1)*280},${64-s.cars/max*54}`);
@@ -86,6 +96,7 @@ function updatePanel(){
 }
 function itemUnavailable(item){if(item.minLevel&&game.cityLevel<item.minLevel)return `City level ${item.minLevel} required`;if(PROJECTS[item.id]&&game.buildings.some(b=>b.project===item.id))return 'Already in your city';if(item.cost>game.coins)return 'Not enough coins';return '';}
 function renderBuildMenu(){
+  for(const t of document.querySelectorAll('[data-category]')){t.classList.toggle('active',t.dataset.category===category);t.setAttribute('aria-selected',String(t.dataset.category===category));}
   $('#build-grid').innerHTML=catalog.filter(item=>item.category===category&&(!item.legacyOnly||game.mode!=='planner')&&(!item.plannerOnly||game.mode==='planner')).map(item=>{
     const reason=itemUnavailable(item);
     return `<button class="build-card${reason?' unaffordable':''}" data-pick-tool="${item.id}" ${reason?'disabled':''}><span class="card-icon" data-icon="${item.icon}"></span><strong>${item.name}</strong><small>${item.hint}</small><b>${item.cost?`$ ${item.cost} <em>${item.unit}</em>`:item.unit}</b><span class="afford-label" ${reason?'':'hidden'}>${reason}</span></button>`;
@@ -107,7 +118,7 @@ function updateUI(){
   $('#running-status').textContent=game.paused?'City paused':'All systems go';$('#undo').disabled=!game.undoStack.length;
   if(!$('#shop-sheet').hidden)for(const button of document.querySelectorAll('[data-upgrade]')){const key=button.dataset.upgrade;button.disabled=upgradeTypes[key].locked||game.upgrades[key]>=B.upgradeMaxLevel||game.coins<game.upgradeCost(key);}
   if(!$('#build-sheet').hidden)for(const button of document.querySelectorAll('[data-pick-tool]')){const reason=itemUnavailable(catalog.find(i=>i.id===button.dataset.pickTool));button.disabled=!!reason;button.classList.toggle('unaffordable',!!reason);button.querySelector('.afford-label').hidden=!reason;button.querySelector('.afford-label').textContent=reason;}
-  updatePanel();cityUI?.update();tutorial?.update();
+  updatePanel();updateTrees();cityUI?.update();tutorial?.update();
 }
 function build(n,quiet=false){
   if(n<0)return;
@@ -118,8 +129,9 @@ function build(n,quiet=false){
     const label=tool;chooseTool(null);changed();toast(`${label==='flyover'?'Flyover':'Bridge'} connected. New routes are open!`);return;
   }
   if(tool==='toll'&&game.tolls.has(n)){openPanel(n);return;}
+  if(tool==='clear-trees'&&game.trees.has(n)){openTrees(n,'clear-trees');return false;}
   const currentTool=tool,error=game.build(n,tool);
-  if(error){if(!quiet)toast(error);return false;}
+  if(error){if(game.trees.has(n)&&currentTool!=='demolish'){if(!quiet)openTrees(n,currentTool);else toast('Clear these trees before building here. Tap them to see the cost.');}else if(!quiet)toast(error);return false;}
   changed();
   cityUI?.audio.play(game.settings.sound,'build');
   if(currentTool==='toll'){chooseTool(null);openPanel(n);toast('Open for business! Adjust the toll and watch drivers adapt.');}
@@ -162,7 +174,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 canvas.addEventListener('pointerup',e=>{
   const p=local(e);pointers.delete(e.pointerId);
-  if(gesture&&!gesture.moved&&!gesture.wasPinch){const n=renderer.tileAt(p.x,p.y);if(tool)build(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();$('#building-panel').hidden=true;renderer.selected=null;}}
+  if(gesture&&!gesture.moved&&!gesture.wasPinch){const n=renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
   if(gesture?.moved&&!gesture.wasPinch&&['road','main','demolish'].includes(tool))paintTo(renderer.tileAt(p.x,p.y));
   if(!pointers.size){finishStroke();gesture=null;pinch=null;renderer.dragging=false;}else if(gesture)gesture.wasPinch=true;
 });
@@ -172,6 +184,7 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();const p=local(e);renderer
 $('#zoom-in').onclick=()=>renderer.zoom(B.zoomStep);$('#zoom-out').onclick=()=>renderer.zoom(-B.zoomStep);$('#center').onclick=()=>renderer.center();
 $('#heatmap').onclick=()=>{$('#build-sheet').hidden=true;renderer.heat=!renderer.heat;$('#heatmap').classList.toggle('active',renderer.heat);$('#heatmap').setAttribute('aria-pressed',String(renderer.heat));$('#heat-legend').hidden=!renderer.heat;$('#hint').hidden=renderer.heat||!!tool;toast(renderer.heat?'Traffic view: ● free · ▨ busy · ▧ jammed. Striped tiles show congestion.':'Back to city view.');};
 for(const button of document.querySelectorAll('[data-tool]'))button.onclick=()=>chooseTool(button.dataset.tool);
+for(const button of document.querySelectorAll('[data-direct-build]'))button.onclick=()=>chooseTool(button.dataset.directBuild);
 $('#cancel-build').onclick=()=>chooseTool(null);$('#close-panel').onclick=closePanel;
 $('#more-tools').onclick=()=>{const open=$('#build-sheet').hidden;if(tool)chooseTool(null);closePanel();closeSheets();$('#build-sheet').hidden=!open;if(open)renderBuildMenu();};
 $('#close-build').onclick=()=>$('#build-sheet').hidden=true;
@@ -189,6 +202,7 @@ $('#toll-slider').onchange=()=>sliderBaseline=null;$('#toll-slider').onpointerca
 $('#toll-minus').onclick=()=>changePrice((game.tolls.get(selected)?.price||0)-1);$('#toll-plus').onclick=()=>changePrice((game.tolls.get(selected)?.price||0)+1);
 $('#panel-action').onclick=()=>{if(selected===null)return;const error=game.build(selected,'toll');if(error)toast(error);else{changed();toast('Another booth is open. Find its sweet spot.');}};
 $('#upgrade-booth').onclick=()=>{const error=game.upgradeBooth(selected);if(error)toast(error);else{changed();toast(`Booth upgraded · ${game.tolls.get(selected).price} per vehicle.`);}};
+$('#remove-road').onclick=()=>{const error=game.removeRoad(selected);if(error)toast(error);else{closePanel();changed();toast('Road removed. Nearby buildings need another road connection.');}};
 $('#remove-toll').onclick=()=>{const error=game.removeToll(selected);if(error)toast(error);else{changed();toast('Booth removed. 60% of its investment returned.');}};
 $('#mini').style.cursor='pointer';$('#mini').onclick=e=>{const r=e.target.getBoundingClientRect();renderer.camera.x=(e.clientX-r.left)/r.width*B.size*B.tile;renderer.camera.y=(e.clientY-r.top)/r.height*B.size*B.tile;renderer.clamp();};
 function configurePlannerUI(){

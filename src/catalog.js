@@ -16,4 +16,5 @@ export const catalog=[
   {id:'signal',name:'Traffic signal',icon:'signal',category:'traffic',cost:B.signalPrice,unit:'',hint:'Controls a 3- or 4-way intersection with alternating lights.'},
   {id:'roundabout',name:'Roundabout',icon:'roundabout',category:'traffic',cost:B.roundaboutPrice,unit:'',hint:'An intersection with 80% more flow capacity.'},
   {id:'demolish',name:'Demolish',icon:'demolish',category:'traffic',cost:0,unit:'60% refund',hint:'Remove booths first, then roads. Tap spans to remove a structure.'},
+  {id:'clear-trees',name:'Clear trees',icon:'tree',category:'city',cost:0,unit:'$15 per tree',hint:'Tap a wooded plot. Pay to clear its trees before placing roads or buildings.'},
 ];

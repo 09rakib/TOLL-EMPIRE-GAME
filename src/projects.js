@@ -16,6 +16,7 @@ export const projectMethods={
     if(this.cityLevel<spec.level)return `Reach city level ${spec.level} to start ${spec.name}.`;
     if(this.buildings.some(b=>b.project===kind))return `${spec.name} already has a site in your city.`;
     if(!Number.isInteger(n)||n<0||n>=B.layerOffset||this.tiles[n]!=='grass')return 'Place your project on empty grass.';
+    if(this.trees.has(n))return 'Clear the trees before starting construction.';
     if(!this.neighbors(n).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
     if(this.flyovers.some(s=>s.nodes.includes(n)))return 'Keep the flyover corridor clear.';
     if(this.coins<spec.costs[0])return `The foundation costs ${spec.costs[0]} coins.`;

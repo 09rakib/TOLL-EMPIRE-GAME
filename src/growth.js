@@ -30,6 +30,7 @@ export const growthMethods={
   validateBuilding(n,kind){
     if(!BUILDINGS[kind]||!Number.isInteger(n)||n<0||n>=B.layerOffset)return 'Choose a building and a city tile.';
     if(this.tiles[n]!=='grass')return 'Buildings need empty grass next to a road.';
+    if(this.trees.has(n))return 'Clear the trees on this plot before placing a building.';
     if(!this.neighbors(n).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
     if(this.flyovers.some(s=>s.nodes.includes(n)))return 'Keep the flyover corridor clear.';
     if(this.coins<BUILDINGS[kind].price)return `You need ${BUILDINGS[kind].price} coins for this building.`;

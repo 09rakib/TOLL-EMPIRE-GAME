@@ -8,7 +8,8 @@ import {buildingStyle} from '../src/architecture.js';
 import {serialize,storage,SAVE_KEY,validateSave,migrate} from '../src/storage.js';
 import {legacyGame} from './fixtures.js';
 import {updateTutorial} from '../src/tutorial.js';
-const city=()=>new Simulation(null,()=>.4);
+// Economy fixtures use already-cleared land; forest behavior has dedicated tests.
+const city=()=>{const g=new Simulation(null,()=>.4);g.trees.clear();return g;};
 test('planner begins with empty land, one continuous road, a bus and a car',()=>{
   const map=createCity(),g=city();assert.equal(map.buildings.length,0);assert.equal(map.tiles.filter(t=>t==='building').length,0);
   assert.ok(map.tiles.every((t,n)=>t!=='road'||Math.floor(n/B.size)===20));assert.equal(g.cars.length,2);assert.deepEqual(g.cars.map(c=>c.kind).sort(),['bus','car']);assert.equal(g.mode,'planner');assert.equal(g.trafficBudget(),2);assert.equal(g.population,0);

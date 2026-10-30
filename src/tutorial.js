@@ -5,7 +5,7 @@ export const tutorialSteps=[
   {title:'Your next opportunity',body:'Open the city board to claim contracts, grow districts and accept optional city events. There is always a next objective.',action:'Open the city board',tool:'board'},
 ];
 export const plannerTutorialSteps=[
-  {title:'Start with your first home',body:'Your land is empty and just two vehicles use the road. Buy a Home and place it on grass beside the road to bring residents and more traffic.',action:'Buy your first home',tool:'city'},
+  {title:'Start with your first home',body:'Tap trees to see their clearing cost. Then buy a Home and place it on clear grass beside the road to bring residents and more traffic.',action:'Buy your first home',tool:'city'},
   {title:'Turn traffic into income',body:'Place a toll booth on the road. Passing vehicles pay you. More connected homes bring more traffic to your city.',action:'Place a toll booth',tool:'toll'},
   {title:'Create a destination',body:'Build an office, hospital, hotel or shop. Workers, patients and guests must arrive by road before you earn money.',action:'Build a business',tool:'city'},
   {title:'You are the city planner',body:'Grow your own roads and neighborhoods. Tap buildings and booths to preview upgrades: more capacity, better income and a new appearance.',action:'Open the city board',tool:'board'},
@@ -24,7 +24,7 @@ export function setupTutorial({getGame,chooseTool,openCityTools,openBoard,save})
   function update(){
     const game=getGame();updateTutorial(game);const t=game.campaign.tutorial;
     for(const b of document.querySelectorAll('.tutorial-target'))b.classList.remove('tutorial-target');
-    const blocked=!document.querySelector('#modal').hidden||!document.querySelector('#build-guide').hidden||['road-panel','building-panel','build-sheet','shop-sheet','operations-sheet','custom-sheet'].some(id=>!document.getElementById(id).hidden);
+    const blocked=!document.querySelector('#modal').hidden||!document.querySelector('#build-guide').hidden||['road-panel','building-panel','build-sheet','shop-sheet','operations-sheet','custom-sheet','tree-panel'].some(id=>!document.getElementById(id).hidden);
     root.hidden=!t||t.done||blocked;if(!t||t.done)return;
     const step=(game.mode==='planner'?plannerTutorialSteps:tutorialSteps)[t.step];root.querySelector('h3').textContent=step.title;root.querySelector('p').textContent=step.body;root.querySelector('small').textContent=`${t.step+1} / ${tutorialSteps.length}`;root.querySelector('.tutorial-action').textContent=step.action+' ↗';
     const target=step.tool==='city'?'#more-tools':step.tool==='board'?'#city-board':`[data-tool="${step.tool}"]`;document.querySelector(target)?.classList.add('tutorial-target');

@@ -30,7 +30,11 @@ export class Renderer {
       if(type==='grass'||type==='building'){
         c.fillStyle=theme.grass[(x*17+y*23)%7===0?1:(x+y)%3===0?2:0];c.fillRect(px,py,T,T);
         if(type==='grass'){
-          if((x*7+y*11)%9===0){this.tree(c,px+22,py+23,.8);this.tree(c,px+39,py+40,.6);}
+          if(this.game.mode==='planner'){
+            if(this.game.trees.has(n))for(let j=0;j<this.game.treeCount(n);j++){
+              const positions=[[15,17],[39,34],[16,42],[39,12]],p=positions[j];this.tree(c,px+p[0],py+p[1],.65+(n+j)%3*.12);
+            }
+          }else if((x*7+y*11)%9===0){this.tree(c,px+22,py+23,.8);this.tree(c,px+39,py+40,.6);}
           else if((x*13+y*3)%11===0){c.fillStyle='#96b77c';for(let j=0;j<4;j++)c.fillRect(px+11+j*8,py+23+(j%2)*4,2,3);}
           if(this.game.mode!=='planner'&&x>7&&x<31&&y>8&&y<30&&(x*3+y*7)%17===0){rounded(c,px+8,py+8,41,39,11,'#a5c48a');c.strokeStyle='#d4dfb8';c.lineWidth=4;c.beginPath();c.moveTo(px+11,py+38);c.lineTo(px+44,py+15);c.stroke();this.tree(c,px+17,py+18,.7);this.tree(c,px+41,py+42,.65);}
         }

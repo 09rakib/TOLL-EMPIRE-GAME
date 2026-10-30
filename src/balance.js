@@ -29,6 +29,7 @@ export const B = Object.freeze({
   plannerVisitFees:[0,8,14,0,24,20], plannerCapacities:[0,18,24,0,12,16],
   plannerFeeGrowth:1.55, plannerCapacityGrowth:1.45, plannerBusChance:.15,
   boothTollLimits:[10,20,30,40,50],
+  treeRemovalPrice:15,
   elasticity:[[0,1],[.125,.85],[.25,.6],[.5,.25],[.75,.08],[1.2,0]],
   colors:{grass:'#b4ce94', road:'#646e73', river:'#76c9d9', ink:'#243d3b',cream:'#fff9eb', gold:'#f2bd44'},
 });

@@ -2,7 +2,7 @@ import {Simulation} from '../src/simulation.js';
 import {B} from '../src/balance.js';
 import {id} from '../src/world.js';
 let seed=7341;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
-const game=new Simulation(null,random);game.coins=100000;
+const game=new Simulation(null,random);game.coins=100000;game.trees.clear();
 game.upgrades.traffic=5;game.upgrades.faster=3;game.setPolicy('tourism');
 for(let x=7;x<=31;x++)game.build(id(x,20),'main');
 game.build(id(19,20),'toll');game.build(id(16,19),'road');game.build(id(16,21),'road');game.build(id(16,20),'signal');

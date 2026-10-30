@@ -3,7 +3,7 @@ import {createCampaign,createSettings} from './campaign.js';
 import {PROJECTS} from './projects.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
-export function serialize(game){return {version:3,mapSize:B.size,worldMode:game.mode,tiles:game.tiles,buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
+export function serialize(game){return {version:3,mapSize:B.size,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
 export function migrate(data){
   if(!data||![1,2,3].includes(data.version))return null;
   if(data.version===1)data={...data,version:2,tolls:data.tolls?.map(([n,t])=>[n,{...t,level:1}]),flyovers:[],bridges:[],signals:[],upgrades:{}};
@@ -21,6 +21,7 @@ export function validateSave(data){
   if(!data||!Array.isArray(data.tiles)||data.tiles.length!==B.layerOffset||!Number.isFinite(data.coins)||data.coins<0||!Array.isArray(data.buildings))return false;
   const legal=new Set(['grass','river','road','bridge','building','mainRoad','roundabout']);
   const node=n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset;
+  if(data.trees!==undefined&&(!Array.isArray(data.trees)||data.trees.length>B.layerOffset||new Set(data.trees).size!==data.trees.length||data.trees.some(n=>!node(n)||data.tiles[n]!=='grass')))return false;
   if(data.tiles.some(t=>!legal.has(t))||data.buildings.some(b=>!b||!Number.isInteger(b.x)||!Number.isInteger(b.y)||b.x<0||b.y<0||b.x>=B.size||b.y>=B.size||!Number.isInteger(b.type)||b.type<0||b.type>5))return false;
   if(data.buildings.some(b=>b.level!==undefined&&(!Number.isInteger(b.level)||b.level<1||b.level>5)||b.paint!==undefined&&(!Number.isInteger(b.paint)||b.paint<0||b.paint>4)||b.variant!==undefined&&(!Number.isInteger(b.variant)||b.variant<0||b.variant>4)||b.investment!==undefined&&(!Number.isFinite(b.investment)||b.investment<0)))return false;
   if(data.buildings.some(b=>b.project&&(!PROJECTS[b.project]||!Number.isInteger(b.projectStage)||b.projectStage<0||b.projectStage>2||!b.projectBaseline||!Number.isFinite(b.projectBaseline.trips)||!Number.isFinite(b.projectBaseline.served))))return false;

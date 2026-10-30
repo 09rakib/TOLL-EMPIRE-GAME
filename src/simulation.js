@@ -7,6 +7,7 @@ import {createCampaign,createSettings,ensureContracts,POLICIES,levelForXp} from 
 import {growthMethods,BUILDINGS} from './growth.js';
 import {PROJECTS,projectMethods} from './projects.js';
 import {plannerMethods} from './planner.js';
+import {forestFor,forestMethods} from './forest.js';
 export const upgradeTypes={
   faster:{name:'Faster Cars',description:'+10% driving speed per level',icon:'road'},
   booths:{name:'Bigger Toll Booths',description:'+15% service capacity per level',icon:'toll'},
@@ -19,6 +20,7 @@ export class Simulation {
     const city=saved||createCity();
     this.mode=saved?(saved.worldMode||'legacy'):'planner';
     this.tiles=[...city.tiles];this.buildings=structuredClone(city.buildings);this.coins=saved?.coins??B.startCoins;
+    this.trees=new Set(saved?.trees??(this.mode==='planner'?forestFor(this.tiles):[]));
     this.tolls=new Map((saved?.tolls||[]).map(([n,t])=>[n,{...t,level:t.level||1}]));
     if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
     this.flyovers=structuredClone(saved?.flyovers||[]);this.signals=new Set(saved?.signals||[]);
@@ -127,7 +129,7 @@ export class Simulation {
   syncCarPosition(car){const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],ax=from%B.size,ay=Math.floor((from%B.layerOffset)/B.size),bx=to%B.size,by=Math.floor((to%B.layerOffset)/B.size);car.worldX=ax+.5+(bx-ax)*car.progress-(by-ay)*9/B.tile;car.worldY=ay+.5+(by-ay)*car.progress+(bx-ax)*9/B.tile;car.angle=Math.atan2(by-ay,bx-ax);}
   get income(){return this.tracker.income;}
   stats(node){return this.tracker.stats(node,this.time);}
-  snapshot(){return {tiles:[...this.tiles],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
+  snapshot(){return {tiles:[...this.tiles],trees:[...this.trees],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
   beginStroke(tool){this.endStroke();this.stroke={tool,entry:null,actions:0};}
   endStroke(){const result=this.stroke;this.stroke=null;return result;}
   record(before){
@@ -148,6 +150,8 @@ export class Simulation {
     const previous=this.undoStack.at(-1);if(!previous)return 'Nothing to undo yet.';
     if(this.coins-previous.cashDelta<0)return 'Not enough coins to reverse this refund.';
     this.undoStack.pop();this.coins-=previous.cashDelta;
+    const beforeTrees=new Set(previous.trees),afterTrees=new Set(previous.after.trees);
+    for(const n of new Set([...beforeTrees,...afterTrees]))if(beforeTrees.has(n)!==afterTrees.has(n)){if(beforeTrees.has(n))this.trees.add(n);else this.trees.delete(n);}
     for(let i=0;i<this.tiles.length;i++)if(previous.tiles[i]!==previous.after.tiles[i])this.tiles[i]=previous.tiles[i];
     if(JSON.stringify(previous.buildings)!==JSON.stringify(previous.after.buildings)){
       const current=new Map(this.buildings.map(b=>[id(b.x,b.y),b]));
@@ -172,8 +176,18 @@ export class Simulation {
     this.rebuild();return null;
   }
   neighbors(n){const {x,y}=point(n);return [[x-1,y],[x+1,y],[x,y-1],[x,y+1]].filter(([a,b])=>a>=0&&b>=0&&a<B.size&&b<B.size).map(([a,b])=>id(a,b));}
+  roadRemovalCost(n){const t=this.tolls.get(n);return (this.tiles[n]==='mainRoad'?B.mainPrice:this.tiles[n]==='roundabout'?B.roadPrice+B.roundaboutPrice:B.roadPrice)+(this.signals.has(n)?B.signalPrice:0)+(t?B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0):0);}
+  removeRoad(n){
+    if(!isRoad(this.tiles[n]))return 'Select a road to remove.';
+    if(this.endpoints.includes(n))return 'Keep the city entrance connected.';
+    if(this.tiles[n]==='bridge'||this.flyovers.some(s=>s.nodes.includes(n))||this.bridges.some(s=>s.nodes.includes(n)))return 'Remove this bridge or flyover with the Demolish tool first.';
+    const before=this.snapshot(),refund=Math.round(this.roadRemovalCost(n)*B.refund);
+    this.tolls.delete(n);this.signals.delete(n);this.tiles[n]='grass';this.coins+=refund;this.record(before);this.rebuild();return null;
+  }
   buildCost(tool){return {road:B.roadPrice,main:B.mainPrice,toll:B.tollPrice,signal:B.signalPrice,roundabout:B.roundaboutPrice}[tool]||0;}
   validate(n,tool){
+    if(tool==='clear-trees')return this.trees.has(n)?this.coins<this.treeRemovalCost(n)?`You need $${this.treeRemovalCost(n)} to clear these trees.`:null:'Tap a wooded plot to clear it.';
+    if(['road','main'].includes(tool)&&this.trees.has(n))return 'Clear the trees on this plot before building a road.';
     if(PROJECTS[tool])return this.validateProject(n,tool);
     if(BUILDINGS[tool])return this.validateBuilding(n,tool);
     if(!Number.isInteger(n)||n<0||n>=this.tiles.length)return 'Choose a tile inside the city.';
@@ -205,6 +219,7 @@ export class Simulation {
     return null;
   }
   build(n,tool){
+    if(tool==='clear-trees')return this.clearTrees(n);
     if(PROJECTS[tool])return this.buildProject(n,tool);
     if(BUILDINGS[tool])return this.buildBuilding(n,tool);
     if(tool==='demolish')return this.demolish(n);
@@ -226,8 +241,10 @@ export class Simulation {
     if(tool==='flyover'){
       if(!isRoad(this.tiles[end]))return {error:'The second ramp must end on an existing road.'};
       if(nodes.some(n=>this.tiles[n]==='river'||this.tiles[n]==='building'||this.tiles[n]==='bridge'))return {error:'Flyovers cross grass and ground roads, not water or buildings.'};
+      if(nodes.some(n=>this.trees.has(n)))return {error:'Clear the trees along the flyover corridor first.'};
       if(this.flyovers.some(s=>s.nodes.some(n=>nodes.includes(n))))return {error:'This span overlaps an existing flyover.'};
     }else{
+      if(this.trees.has(end))return {error:'Clear the trees at the bridge landing first.'};
       if(this.tiles[end]!=='grass'&&!isRoad(this.tiles[end]))return {error:'End your bridge on clear land or a road on the other bank.'};
       if(nodes.slice(1,-1).some(n=>this.tiles[n]!=='river'))return {error:'A bridge must cross only river tiles between its two banks.'};
     }
@@ -287,3 +304,4 @@ export class Simulation {
 Object.assign(Simulation.prototype,growthMethods);
 Object.assign(Simulation.prototype,projectMethods);
 Object.assign(Simulation.prototype,plannerMethods);
+  Object.assign(Simulation.prototype,forestMethods);

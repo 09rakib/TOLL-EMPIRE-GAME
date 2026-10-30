@@ -55,7 +55,7 @@ export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame
     if(card.dataset.eventKey!==eventKey){card.dataset.eventKey=eventKey;card.innerHTML=`<span class="eyebrow">${status==='offer'?'YOU ARE INVITED':active?'CITY EVENT IN PROGRESS':status==='won'?'CHALLENGE COMPLETE':'THANKS FOR TAKING PART'}</span><h3>${spec.name}</h3><p>${spec.description}</p><strong id="event-progress"></strong><div>${status==='offer'?'<button class="primary" id="accept-event">Take the challenge ↗</button><button class="text-button" id="finish-event">Maybe next time</button>':active?'':`<button class="primary" id="finish-event">${status==='won'?`Collect $ ${fmt(event.reward)} +80 XP`:'Back to my city'} ↗</button>`}</div>`;if($('#accept-event'))$('#accept-event').onclick=()=>action(g=>g.acceptEvent(),'Event started. Keep your city moving!');if($('#finish-event'))$('#finish-event').onclick=()=>action(g=>g.finishEvent());}
     if($('#event-progress'))$('#event-progress').textContent=active?`${fmt(game.eventProgress())} / ${spec.target} ${spec.key==='trips'?'trips':'coins'} · ${Math.max(0,Math.ceil(event.endsAt-game.time))}s remaining`:status==='offer'?`Reward: $ ${fmt(event.reward)} +80 XP`:'';
   }
-  function openBuilding(node){closeAll();buildingNode=node;renderer.selected=node;$('#building-panel').hidden=false;updateBuilding();}
+  function openBuilding(node){closeAll();buildingNode=node;renderer.selected=node;$('#building-panel').hidden=false;$('#building-panel').scrollTop=0;updateBuilding();}
   function updateBuilding(){
     if($('#building-panel').hidden||buildingNode===null)return;
     const game=getGame(),b=game.buildingAt(buildingNode);if(!b){$('#building-panel').hidden=true;return;}
@@ -78,7 +78,7 @@ export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame
     }
     $('#upgrade-building').textContent=level>=5?'Fully developed · Level 5':`Upgrade to level ${level+1} · $ ${fmt(cost)} ↗`;$('#upgrade-building').disabled=level>=5||game.coins<cost||!connected;
     }
-    $('#remove-building').textContent=`Demolish building · $ ${fmt((b.investment||0)*B.refund)} refund`;
+    $('#remove-building').textContent=`Remove building · $ ${fmt((b.investment||0)*B.refund)} refund`;
     $('#building-upgrade-preview').hidden=game.mode!=='planner'||!!b.project;if(!$('#building-upgrade-preview').hidden)drawUpgradeComparison($('#building-upgrade-preview'),b);
     if(!$('#paint-palette').children.length){$('#paint-palette').innerHTML=['Original','Seafoam','Terracotta','Sandstone','Lavender'].map((name,i)=>`<button data-paint="${i}" aria-label="Paint building ${name}" title="${name}" style="--swatch:${['#bfa181','#7eaaa6','#bf8373','#bba273','#9d8fb0'][i]}"></button>`).join('');for(const button of document.querySelectorAll('[data-paint]'))button.onclick=()=>{getGame().paintBuilding(buildingNode,+button.dataset.paint);changed();updateBuilding();};}
     for(const button of document.querySelectorAll('[data-paint]'))button.setAttribute('aria-pressed',String(+button.dataset.paint===(b.paint||0)));

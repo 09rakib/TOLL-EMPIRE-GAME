@@ -1,4 +1,4 @@
-# Toll Empire · v0.4.1: full-screen city planner
+# Toll Empire · v0.5.0: forest and city editing
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
@@ -22,6 +22,14 @@ On Windows use `gradlew.bat assembleDebug`. Set `JAVA_HOME` and `ANDROID_HOME` t
 Build tasks copy current root `index.html`, `src/` and `public/` into generated Android assets automatically, disabling the browser service worker inside that copy. The source tree remains shared. Backgrounding saves progress, and Android local storage survives force-stop/relaunch. The app supports Android 7.0/API 24 and newer with a current Android System WebView.
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
+
+## Forest and city editing (v0.5.0)
+
+Build menu opens City buildings by default, with Hospital, Hotel and Park shortcuts at the top. Tap any placed building to paint, upgrade or remove it. Remove building is shown near the top of its inspector and refunds 60% of its investment. Tap a road and choose Remove road + fixtures to remove the ground road, booth and signal together for their combined 60% refund; protected entrances remain. Bridges/flyovers use the Demolish tool first. Undo restores removed structures and their connections.
+
+Planner land now contains dense, persistent groves on roughly 55% of empty plots. Tap a tree plot to see its tree count and exact clearing cost before paying: **15 coins per tree**, typically 30–60 coins per plot. Clear plot removes all trees on that plot. Roads, buildings, parks and flyover corridors require cleared land; a bridge landing must also be clear. Choosing a building on wooded land opens the clearing panel and returns to that building tool after payment. A Clear trees tool is also available in City buildings.
+
+Cleared plots stay clear through saves, building removal and reloads. Undo reverses clearing and refunds its cost, while preserving income earned afterward. Older cities receive forest only on empty grass; existing buildings and roads are preserved. Park trees are part of their building artwork and are removed by removing the park.
 
 ## Your first city
 
@@ -73,7 +81,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-60 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
+66 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 
