@@ -1,6 +1,20 @@
-# Toll Empire · v0.9.1: reliable campus placement
+# Toll Empire · v0.10.0: playable isometric prototype
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
+
+## Isometric 2.5D prototype
+
+The `codex/isometric-2-5d` branch introduces a fixed isometric camera. Gameplay, tile IDs, building footprints, money, routes and save formats remain unchanged. Existing cities render in the new view. Stable v0.9.1 remains on `main`.
+
+Roads, parking, river water, the park grounds and placement previews project onto diamond tiles. Buildings have separate roofs and side walls, windows, upgrade heights, paint and signs. Home parking and L-office layouts keep their actual world positions. Vehicles and pedestrians share the projection; elevated roads and their cars lift above ground. Static scene pieces and moving agents merge in depth order. Tapping a raised building face selects its property; building brushes pick ground diamonds. Pan, pinch/scroll zoom, minimap navigation, clearing and placement use inverse projection. This is the first playable rendering pass; detailed architectural art, complex occlusion polish and actual phone frame pacing still need device validation.
+
+Rendering targets a 16.67 ms frame budget: bounded LRU ground chunks (8 × 8 tiles, at most 24 cached), cached building/tree/vehicle sprites, world and screen culling, cached static depth sorting, linear merging of dynamic agents, and a minimap refreshed at most five times per second. DPR caps at 1.5 (1 in low-power mode); sustained high render cost can reduce it to 1. Simulation retains its fixed 30 Hz step with interpolated rAF drawing. No timers force a lower drawing rate.
+
+Run `node scripts/render-benchmark.mjs --mobile-dpr` after installing Chrome, or set `CHROME_PATH` to a Chromium executable. The runner serves an isolated stress scene, waits for 240 real rAF frames, and reports CPU work and frame intervals. It does not use virtual-time clocks to measure performance. `--software` additionally disables GPU acceleration. The manual scene is `/scripts/isometric-benchmark.html`; `?sync` is a CPU batch diagnostic rather than a frame-pacing test.
+
+Measured on this development desktop in GPU-enabled headless Chrome at the 1.5 DPR cap: 82 buildings, 250 real simulated cars and 2,112 forest plots; 209 measured frames after warm-up; 60 rAF FPS, 3.12 ms mean simulation/render/satisfaction CPU work, 5.6 ms p95, 7 ms maximum; p95 frame interval 16.8 ms, zero intervals over 25 ms. This is not a phone FPS guarantee. Actual Vivo/WebView sustained performance, GPU/thermal behavior and full HUD interaction must be checked on-device before calling the mobile conversion performance-complete. Version 0.10.0 is a prototype APK; it is not automatically installed over the stable phone build.
+
+Projection tests cover round-trips, diamond picking at different zooms, pan direction, zoom anchoring, culling and elevated facade selection. A browser smoke test exercises the actual app pointer handlers for a wooded 4 × 4 campus, clearing/building and selecting its raised face. Visual proof: `isometric-city-mobile.png`.
 
 ## Run
 
@@ -127,7 +141,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-99 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
+104 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 

@@ -2,7 +2,7 @@ import {citySatisfaction} from './satisfaction.js';
 import {B} from './balance.js';
 import {isRoad,point} from './world.js';
 import {Simulation,upgradeTypes} from './simulation.js';
-import {Renderer} from './renderer.js';
+import {Renderer} from './isometric-renderer.js';
 import {storage} from './storage.js';
 import {hydrateIcons} from './icons.js';
 import {catalog} from './catalog.js';
@@ -182,12 +182,12 @@ canvas.addEventListener('pointermove',e=>{
   if(!gesture||gesture.wasPinch)return;
   const dx=p.x-gesture.x,dy=p.y-gesture.y;
   if(Math.hypot(p.x-gesture.startX,p.y-gesture.startY)>5)gesture.moved=true;
-  if(gesture.moved){if(['road','main','demolish','clear-trees'].includes(tool)){if(n!==lastBuilt)paintTo(n);}else if(!tool||tool==='flyover'||tool==='bridge'){renderer.camera.x-=dx/renderer.camera.zoom;renderer.camera.y-=dy/renderer.camera.zoom;renderer.velocityX=-dx/renderer.camera.zoom*30;renderer.velocityY=-dy/renderer.camera.zoom*30;renderer.clamp();}}
+  if(gesture.moved){if(['road','main','demolish','clear-trees'].includes(tool)){if(n!==lastBuilt)paintTo(n);}else if(!tool||tool==='flyover'||tool==='bridge'){renderer.pan(dx,dy);}}
   gesture.x=p.x;gesture.y=p.y;
 });
 canvas.addEventListener('pointerup',e=>{
   const p=local(e);pointers.delete(e.pointerId);
-  if(gesture&&!gesture.wasPinch&&(!gesture.moved||!!BUILDINGS[tool])){const n=renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
+  if(gesture&&!gesture.wasPinch&&(!gesture.moved||!!BUILDINGS[tool])){const n=!tool?renderer.pickObjectAt(p.x,p.y):renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
   if(gesture?.moved&&!gesture.wasPinch&&['road','main','demolish','clear-trees'].includes(tool))paintTo(renderer.tileAt(p.x,p.y));
   if(!pointers.size){finishStroke();gesture=null;pinch=null;renderer.dragging=false;}else if(gesture)gesture.wasPinch=true;
 });

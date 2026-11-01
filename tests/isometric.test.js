@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {project,unproject,cameraWorld,visibleBounds,containsPoint,prismOutline} from '../src/isometric.js';
+import {Renderer} from '../src/isometric-renderer.js';
+import {B} from '../src/balance.js';
+import {id} from '../src/world.js';
+const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
+test('isometric projection round-trips world coordinates across the complete city',()=>{for(let y=0;y<=64;y+=3)for(let x=0;x<=64;x+=3){const p=project(x*56,y*56),q=unproject(p.x,p.y);near(q.x,x*56);near(q.y,y*56);}});
+test('camera picking selects the right diamond at every zoom and after a pan',()=>{const r=Object.create(Renderer.prototype);r.width=390;r.height=844;for(const zoom of [.4,.78,1.5,2.5]){r.camera={x:19.5*56,y:20.5*56,zoom};for(const [x,y]of [[18,19],[20,21],[25,25],[0,0],[63,63]]){const p=r.worldToScreen((x+.5)*56,(y+.5)*56);assert.equal(r.tileAt(p.x,p.y),id(x,y));}const before=r.worldToScreen(20*56,20*56);r.pan(30,20);const after=r.worldToScreen(20*56,20*56);near(after.x-before.x,30);near(after.y-before.y,20);}});
+test('pinch/scroll zoom preserves the touched world point',()=>{const r=Object.create(Renderer.prototype);Object.assign(r,{width:390,height:844,camera:{x:19*56,y:21*56,zoom:.8},zoomAnchor:{x:120,y:350}});const a=r.screenToWorld(120,350);r.applyZoom(1.6);const b=r.screenToWorld(120,350);near(a.x,b.x);near(a.y,b.y);});
+test('culling includes screen corners and elevation margin without leaving world bounds',()=>{const camera={x:19*56,y:20*56,zoom:.78},bounds=visibleBounds(camera,390,844,56,64,4);for(const [x,y]of [[0,0],[390,0],[0,844],[390,844]]){const p=cameraWorld(x,y,camera,390,844);assert.ok(p.x/56>=bounds.left&&p.x/56<=bounds.right+1);assert.ok(p.y/56>=bounds.top&&p.y/56<=bounds.bottom+1);}assert.ok(bounds.left>=0&&bounds.bottom<64);});
+test('raised building faces pick their own property instead of a ground tile behind it',()=>{const poly=prismOutline(18*56,21*56,44,44,65),p=project(18*56+44,21*56+22,35);assert.ok(containsPoint(poly,p.x-1,p.y));const r=Object.create(Renderer.prototype);Object.assign(r,{width:390,height:844,camera:{x:19*56,y:21*56,zoom:.8},hitBodies:[{outline:poly,node:id(18,21)}]});const q=r.worldToScreen(18*56+44,21*56+22,35);assert.equal(r.pickObjectAt(q.x-1,q.y),id(18,21));});
