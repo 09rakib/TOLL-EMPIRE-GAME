@@ -1,6 +1,7 @@
+import {drivingMethods} from './driving.js';
 import {B} from './balance.js';
 import {createCity,graphFrom,id,isRoad,point} from './world.js';
-import {findRoute,valueOfTime} from './pathfinder.js';
+import {findRoute,findDriveRoute,roadHeading,valueOfTime} from './pathfinder.js';
 import {capacityFor,speedFactor,congestion,roadName} from './traffic.js';
 import {StatsTracker} from './stats.js';
 import {createCampaign,createSettings,ensureContracts,POLICIES,levelForXp} from './campaign.js';
@@ -29,6 +30,7 @@ export class Simulation {
     this.tolls=new Map((saved?.tolls||[]).map(([n,t])=>[n,{...t,level:t.level||1}]));
     if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
     this.flyovers=structuredClone(saved?.flyovers||[]);this.signals=new Set(saved?.signals||[]);
+    this.uturns=new Set(saved?.uturns||[]);
     this.bridges=structuredClone(saved?.bridges||[]);this.upgrades={faster:0,booths:0,traffic:0,repair:0,offline:0,...saved?.upgrades};
     this.graph=graphFrom(this.tiles,this.flyovers);
     this.walkTopology=0;this.walkTopologySignature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');
@@ -55,10 +57,10 @@ export class Simulation {
   }
   get cityLevel(){return levelForXp(this.campaign.xp);}
   get totalIncome(){return this.mode==='planner'?this.income+this.businessTracker.income:this.income+this.businessRate*POLICIES[this.settings.policy].revenue;}
-  route(a,b,vot){
-    const key=`${a}:${b}:${Math.round(vot*40)}:${this.revision}:${Math.floor(this.time/B.routeCacheSeconds)}`;
+  route(a,b,vot,heading=null){
+    const key=`${a}:${b}:${heading}:${Math.round(vot*40)}:${this.revision}:${Math.floor(this.time/B.routeCacheSeconds)}`;
     if(this.routeCache.has(key))return this.routeCache.get(key);
-    const route=findRoute(this.graph,a,b,vot,this.tolls,this.travelTime);
+    const route=findDriveRoute(this.graph,a,b,vot,this.tolls,this.travelTime,this.uturns,heading);
     if(this.routeCache.size>=B.routeCacheLimit)this.routeCache.clear();this.routeCache.set(key,route);return route;
   }
   spawn() {
@@ -73,7 +75,7 @@ export class Simulation {
     if(!route||route.length<2)return;
     if(this.cars.some(c=>c.route[c.index]===a&&c.progress<.8))return;
     const car=this.pool.pop()||{};
-    Object.assign(car,{route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination:b,revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false});
+    Object.assign(car,{route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination:b,revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,heading:null,turn:null,stranded:false,blocked:false,exiting:false});
     this.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;
     this.cars.push(car);
   }
@@ -94,13 +96,17 @@ export class Simulation {
   advance(car,dt){
     if(car.done)return;
     const current=car.route[car.index],next=car.route[car.index+1];
-    if(next===undefined){if(this.mode==='planner'&&!this.warming){if(car.targetBuilding!==null&&car.targetBuilding!==undefined&&this.beginOfficeParking(car))return;car.progress+=dt*B.carTilesPerSecond;car.age+=dt;if(car.progress<1)return;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;this.settleVisit(car);}car.done=true;return;}
+    if(car.turn){this.updateUTurn(car,dt);return;}
+    if(car.stranded){car.age+=dt;if(!this.replanVehicle(car)&&!this.continueToExit(car))return;return;}
+    if(next===undefined){if(this.mode==='planner'&&!this.warming){if(car.targetBuilding!==null&&car.targetBuilding!==undefined&&this.beginOfficeParking(car))return;if(!this.endpoints.includes(current)){if(!this.continueToExit(car))car.stranded=true;return;}car.exiting=true;car.progress+=dt*B.carTilesPerSecond;car.age+=dt;if(car.progress<1.35)return;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}car.done=true;return;}
+    if(!this.graph.has(current)||!this.graph.has(next)){car.blocked=true;car.age+=dt;return;}car.blocked=false;
+    const direction=roadHeading(current,next,car.heading??null);if(car.heading!==null&&car.heading!==undefined&&direction===(car.heading+2)%4){if(!this.uturns.has(current)){car.stranded=true;return;}this.startUTurn(car,current);this.updateUTurn(car,dt);return;}
     car.age+=dt;car.edgeAge=(car.edgeAge||0)+dt;
     if(car.waitingNode!==null&&car.waitingNode!==undefined){
       if(!this.tolls.has(car.waitingNode)){car.waitingNode=null;}
       else if(this.time<car.serviceAt)return;
     }else{
-      car.progress+=dt*B.carTilesPerSecond*this.speedAt(current);
+      const previousProgress=car.progress;car.progress+=dt*B.carTilesPerSecond*this.speedAt(current);this.limitFollowing(car,previousProgress);
       if(car.progress<1)return;
       if(!this.signalAllows(current,next)){car.progress=.99;return;}
       if(this.tolls.has(next)&&!this.warming){
@@ -109,15 +115,14 @@ export class Simulation {
         if(ready>this.time){car.waitingNode=next;car.serviceAt=ready;car.progress=.99;return;}
       }
     }
-    car.waitingNode=null;car.progress=Math.max(0,car.progress-1);car.index++;
+    car.waitingNode=null;car.heading=roadHeading(current,next,car.heading??null);car.progress=Math.max(0,car.progress-1);car.index++;
     const node=car.route[car.index];
     if(!this.warming)this.tracker.passage(this.time,node,car.edgeAge*B.tileTravelTime*B.carTilesPerSecond);car.edgeAge=0;
     const booth=this.tolls.get(node);
     if(booth&&!this.warming){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
     if(car.index>=car.route.length-1){if(this.mode==='planner'&&!this.warming){car.progress=0;return;}car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}return;}
     if(car.revision!==this.revision){
-      const route=this.route(node,car.destination,car.vot);
-      if(!route){car.done=true;return;}car.route=route;car.index=0;car.revision=this.revision;
+      if(!this.replanVehicle(car)){car.stranded=true;car.progress=0;}
     }
   }
   update(dt){
@@ -128,6 +133,7 @@ export class Simulation {
     const interval=this.mode==='planner'?this.plannerInterval()/(event?.demand||1):B.spawnInterval/((1+this.upgrades.traffic*B.trafficBoostPerLevel)*this.demandBonus*POLICIES[this.settings.policy].demand*(event?.demand||1));
     if(this.spawnClock>=interval){this.spawnClock=Math.min(this.spawnClock,interval);if(this.mode!=='planner'||this.cars.length<this.trafficBudget()){this.spawnClock-=interval;this.spawn();}}
     if(this.replanClock>=B.replanSeconds){this.replanClock=0;for(const car of this.cars)if(this.random()<B.replanShare)car.revision=-1;}
+    this.prepareLeaders();
     for(let i=this.cars.length-1;i>=0;i--){const car=this.cars[i];car.prevX=car.worldX;car.prevY=car.worldY;if(car.parkingPhase)this.updateOfficeParking(car,dt);else this.advance(car,dt);this.syncCarPosition(car);if(car.done){this.pool.push(car);this.cars.splice(i,1);}}
     this.tracker.update(this.time,this.graph);
     this.businessTracker.trim(this.time);
@@ -136,14 +142,15 @@ export class Simulation {
     this.updateWalkers(dt);
   }
   syncCarPosition(car){
-    if(car.parkingPhase)return;
+    if(car.parkingPhase||car.turn||car.stranded||car.blocked)return;
     const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],a=point(from),b=point(to);let dx=b.x-a.x,dy=b.y-a.y,progress=car.progress;
+    if(car.heading!==undefined&&car.heading!==null&&roadHeading(from,to,car.heading)===(car.heading+2)%4&&this.uturns.has(from)){const angle=car.heading*Math.PI/2;car.worldX=a.x+.5-Math.sin(angle)*9/B.tile;car.worldY=a.y+.5+Math.cos(angle)*9/B.tile;car.angle=angle;return;}
     if(this.mode==='planner'&&car.index===car.route.length-1){const previous=point(car.route[Math.max(0,car.index-1)]);dx=a.x-previous.x;dy=a.y-previous.y;if(!dx&&!dy){dx=Math.cos(car.angle||0);dy=Math.sin(car.angle||0);}progress*=.9;}
     car.worldX=a.x+.5+dx*progress-dy*9/B.tile;car.worldY=a.y+.5+dy*progress+dx*9/B.tile;car.angle=Math.atan2(dy,dx);
   }
   get income(){return this.tracker.income;}
   stats(node){return this.tracker.stats(node,this.time);}
-  snapshot(){return {tiles:[...this.tiles],trees:[...this.trees],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
+  snapshot(){return {uturns:[...this.uturns],tiles:[...this.tiles],trees:[...this.trees],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
   beginStroke(tool){this.endStroke();this.stroke={tool,entry:null,actions:0};}
   endStroke(){const result=this.stroke;this.stroke=null;return result;}
   record(before){
@@ -157,7 +164,7 @@ export class Simulation {
     const signature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');if(signature!==this.walkTopologySignature){this.walkTopology++;this.walkTopologySignature=signature;}
     this.refreshDevelopment();
     for(const n of this.serviceNext.keys())if(!this.tolls.has(n))this.serviceNext.delete(n);
-    for(const car of this.cars){if(car.waitingNode!==null&&!this.tolls.has(car.waitingNode))car.waitingNode=null;if(!car.parkingPhase&&car.route.some(n=>!this.graph.has(n)))car.done=true;}
+    for(const car of this.cars){if(car.waitingNode!==null&&!this.tolls.has(car.waitingNode))car.waitingNode=null;if(!car.parkingPhase){car.revision=-1;if(this.mode!=='planner'&&car.route.some(n=>!this.graph.has(n)))car.done=true;}}
     for(let i=this.cars.length-1;i>=0;i--)if(this.cars[i].done){this.pool.push(this.cars[i]);this.cars.splice(i,1);}
   }
   undo(){
@@ -185,21 +192,22 @@ export class Simulation {
     }
     if(JSON.stringify(previous.flyovers)!==JSON.stringify(previous.after.flyovers))this.flyovers=previous.flyovers;
     if(JSON.stringify(previous.bridges)!==JSON.stringify(previous.after.bridges))this.bridges=previous.bridges;
+    if(previous.uturns)this.uturns=new Set(previous.uturns);
     const beforeSignals=new Set(previous.signals),afterSignals=new Set(previous.after.signals);
     for(const n of new Set([...beforeSignals,...afterSignals]))if(beforeSignals.has(n)!==afterSignals.has(n)){if(beforeSignals.has(n))this.signals.add(n);else this.signals.delete(n);}
     if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
     this.rebuild();return null;
   }
   neighbors(n){const {x,y}=point(n);return [[x-1,y],[x+1,y],[x,y-1],[x,y+1]].filter(([a,b])=>a>=0&&b>=0&&a<B.size&&b<B.size).map(([a,b])=>id(a,b));}
-  roadRemovalCost(n){const t=this.tolls.get(n);return (this.tiles[n]==='mainRoad'?B.mainPrice:this.tiles[n]==='roundabout'?B.roadPrice+B.roundaboutPrice:B.roadPrice)+(this.signals.has(n)?B.signalPrice:0)+(t?B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0):0);}
+  roadRemovalCost(n){const t=this.tolls.get(n);return (this.tiles[n]==='mainRoad'?B.mainPrice:this.tiles[n]==='roundabout'?B.roadPrice+B.roundaboutPrice:B.roadPrice)+(this.uturns.has(n)?60:0)+(this.signals.has(n)?B.signalPrice:0)+(t?B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0):0);}
   removeRoad(n){
     if(!isRoad(this.tiles[n]))return 'Select a road to remove.';
     if(this.endpoints.includes(n))return 'Keep the city entrance connected.';
     if(this.tiles[n]==='bridge'||this.flyovers.some(s=>s.nodes.includes(n))||this.bridges.some(s=>s.nodes.includes(n)))return 'Remove this bridge or flyover with the Demolish tool first.';
     const before=this.snapshot(),refund=Math.round(this.roadRemovalCost(n)*B.refund);
-    this.tolls.delete(n);this.signals.delete(n);this.tiles[n]='grass';this.coins+=refund;this.record(before);this.rebuild();return null;
+    this.tolls.delete(n);this.signals.delete(n);this.uturns.delete(n);this.tiles[n]='grass';this.coins+=refund;this.record(before);this.rebuild();return null;
   }
-  buildCost(tool){return {road:B.roadPrice,main:B.mainPrice,toll:B.tollPrice,signal:B.signalPrice,roundabout:B.roundaboutPrice}[tool]||0;}
+  buildCost(tool){return {road:B.roadPrice,main:B.mainPrice,toll:B.tollPrice,signal:B.signalPrice,roundabout:B.roundaboutPrice,uturn:60}[tool]||0;}
   validate(n,tool){
     if(tool==='clear-trees')return this.trees.has(n)?this.coins<this.treeRemovalCost(n)?`You need $${this.treeRemovalCost(n)} to clear these trees.`:null:'Tap a wooded plot to clear it.';
     if(['road','main'].includes(tool)&&this.trees.has(n))return 'Clear the trees on this plot before building a road.';
@@ -215,7 +223,7 @@ export class Simulation {
       if(this.endpoints.includes(n))return 'Keep the city entrance connected.';
       return null;
     }
-    if(tool==='toll'){
+    if(tool==='uturn'){if(!isRoad(type))return 'Place a U-turn point on a ground road.';if(this.uturns.has(n))return 'This road already has a U-turn point.';}else if(tool==='toll'){
       if(!isRoad(type))return 'Toll booths need an existing road.';
       if(this.tolls.has(n))return 'There is already a toll booth here.';
       if(this.tolls.size>=B.maxBooths)return `Maximum ${B.maxBooths} toll booths reached.`;
@@ -240,7 +248,8 @@ export class Simulation {
     if(tool==='demolish')return this.demolish(n);
     const error=this.validate(n,tool);if(error)return error;
     const before=this.snapshot();this.coins-=this.buildCost(tool);
-    if(tool==='toll')this.tolls.set(n,{price:B.initialToll,level:1,baseline:this.stats(n),alternativeBefore:this.alternativeStats(n)});
+    if(tool==='uturn')this.uturns.add(n);
+    else if(tool==='toll')this.tolls.set(n,{price:B.initialToll,level:1,baseline:this.stats(n),alternativeBefore:this.alternativeStats(n)});
     else if(tool==='signal')this.signals.add(n);
     else this.tiles[n]=tool==='main'?'mainRoad':tool==='roundabout'?'roundabout':'road';
     this.record(before);this.rebuild();return null;
@@ -300,7 +309,8 @@ export class Simulation {
     const fly=this.flyovers.find(s=>s.nodes.includes(n)),bridge=this.bridges.find(s=>s.nodes.includes(n));
     if(this.tiles[n]==='building'){const b=this.buildingAt(n);value=b?.investment||0;if(b){for(const cell of plotCells(b))this.tiles[cell]='grass';this.buildings=this.buildings.filter(item=>item!==b);}}
     else if(fly){value=fly.cost;this.flyovers=this.flyovers.filter(s=>s!==fly);}
-    else if(bridge){value=bridge.cost;for(const a of bridge.nodes.slice(1,-1)){this.tiles[a]='river';this.tolls.delete(a);this.signals.delete(a);}this.bridges=this.bridges.filter(s=>s!==bridge);}
+    else if(bridge){value=bridge.cost;for(const a of bridge.nodes.slice(1,-1)){this.tiles[a]='river';this.tolls.delete(a);this.signals.delete(a);this.uturns.delete(a);}this.bridges=this.bridges.filter(s=>s!==bridge);}
+    else if(this.uturns.has(n)){value=60;this.uturns.delete(n);}
     else if(this.tolls.has(n)){const t=this.tolls.get(n);value=B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0);this.tolls.delete(n);}
     else if(this.signals.has(n)){value=B.signalPrice;this.signals.delete(n);}
     else{value=this.tiles[n]==='mainRoad'?B.mainPrice:this.tiles[n]==='roundabout'?B.roundaboutPrice+B.roadPrice:B.roadPrice;this.tiles[n]='grass';}
@@ -337,6 +347,7 @@ export class Simulation {
     this.coins-=cost;this.upgrades[type]++;this.revision++;return null;
   }
 }
+Object.assign(Simulation.prototype,drivingMethods);
 Object.assign(Simulation.prototype,growthMethods);
 Object.assign(Simulation.prototype,projectMethods);
 Object.assign(Simulation.prototype,plannerMethods);

@@ -5,7 +5,7 @@ import {plotCells} from './plots.js';
 import {updateRiver} from './river.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
-export function serialize(game){return {version:3,mapSize:B.size,riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
+export function serialize(game){return {version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
 export function migrate(data){
   if(!data||![1,2,3].includes(data.version))return null;
   if(data.version===1)data={...data,version:2,tolls:data.tolls?.map(([n,t])=>[n,{...t,level:1}]),flyovers:[],bridges:[],signals:[],upgrades:{}};
@@ -14,7 +14,7 @@ export function migrate(data){
   if(data.tiles?.length===1600&&B.size!==40){
     const remap=n=>Number.isInteger(n)&&n>=0&&n<1600?Math.floor(n/40)*B.size+n%40:-1;
     const tiles=Array(B.layerOffset).fill('grass');for(let n=0;n<1600;n++)tiles[remap(n)]=data.tiles[n];
-    data={...data,mapSize:B.size,tiles,tolls:data.tolls?.map(([n,t])=>[remap(n),{...t,...(t.alternativeBefore?{alternativeBefore:{...t.alternativeBefore,node:remap(t.alternativeBefore.node)}}:{})}]),signals:data.signals?.map(remap),flyovers:data.flyovers?.map(s=>({...s,nodes:s.nodes?.map(remap)})),bridges:data.bridges?.map(s=>({...s,nodes:s.nodes?.map(remap)}))};
+    data={...data,mapSize:B.size,tiles,tolls:data.tolls?.map(([n,t])=>[remap(n),{...t,...(t.alternativeBefore?{alternativeBefore:{...t.alternativeBefore,node:remap(t.alternativeBefore.node)}}:{})}]),signals:data.signals?.map(remap),uturns:data.uturns?.map(remap),flyovers:data.flyovers?.map(s=>({...s,nodes:s.nodes?.map(remap)})),bridges:data.bridges?.map(s=>({...s,nodes:s.nodes?.map(remap)}))};
   }
   if(data.worldMode==='planner'&&Array.isArray(data.tolls))data={...data,tolls:data.tolls.map(entry=>Array.isArray(entry)&&entry[1]&&Number.isInteger(entry[1].level)&&entry[1].level>=1&&entry[1].level<=5?[entry[0],{...entry[1],price:Math.min(entry[1].price,B.boothTollLimits[entry[1].level-1])}]:entry)};
   return updateRiver(data);
@@ -23,6 +23,7 @@ export function validateSave(data){
   if(!data||!Array.isArray(data.tiles)||data.tiles.length!==B.layerOffset||!Number.isFinite(data.coins)||data.coins<0||!Array.isArray(data.buildings))return false;
   const legal=new Set(['grass','river','road','bridge','building','mainRoad','roundabout']);
   const node=n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset;
+  if(data.uturns!==undefined&&(!Array.isArray(data.uturns)||new Set(data.uturns).size!==data.uturns.length||data.uturns.some(n=>!node(n)||!['road','mainRoad','bridge','roundabout'].includes(data.tiles[n]))))return false;
   if(data.trees!==undefined&&(!Array.isArray(data.trees)||data.trees.length>B.layerOffset||new Set(data.trees).size!==data.trees.length||data.trees.some(n=>!node(n)||data.tiles[n]!=='grass')))return false;
   if(data.tiles.some(t=>!legal.has(t))||data.buildings.some(b=>!b||!Number.isInteger(b.x)||!Number.isInteger(b.y)||b.x<0||b.y<0||b.x>=B.size||b.y>=B.size||!Number.isInteger(b.type)||b.type<0||b.type>5))return false;
   if(data.buildings.some(b=>b.level!==undefined&&(!Number.isInteger(b.level)||b.level<1||b.level>5)||b.paint!==undefined&&(!Number.isInteger(b.paint)||b.paint<0||b.paint>4)||b.variant!==undefined&&(!Number.isInteger(b.variant)||b.variant<0||b.variant>4)||b.investment!==undefined&&(!Number.isFinite(b.investment)||b.investment<0)))return false;

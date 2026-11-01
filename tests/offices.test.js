@@ -33,7 +33,7 @@ test('parking does not earn on road arrival and a disconnected parked vehicle re
   const g=city(),n=id(18,21);g.build(n,'office');const b=g.buildingAt(n),entry=g.buildingEntrance(b);g.cars=[];g.addPlannerCar(id(7,20),entry,n,'car');const c=g.cars[0];
   for(let i=0;i<1500&&c.parkingPhase!=='parked';i++){g.update(B.fixedStep);if(c.parkingPhase==='waiting'||c.parkingPhase==='entering')assert.equal(b.revenue,0);}
   assert.equal(c.parkingPhase,'parked');g.removeRoad(entry);const x=c.worldX,y=c.worldY,revenue=b.revenue;run(g,25);assert.equal(c.worldX,x);assert.equal(c.worldY,y);assert.equal(b.revenue,revenue);assert.equal(g.buildingEntrance(b),null);
-  g.demolish(n);run(g,1);assert.ok(!g.cars.includes(c)||c.parkingOffice!==n);
+  g.demolish(n);run(g,1);assert.ok(g.cars.includes(c));assert.equal(c.done,false);assert.ok(Number.isFinite(c.worldX+c.worldY));
 });
 test('clearing and building an office is atomic and preserves an older compact office save',()=>{
   const g=city(),n=id(18,21);g.trees.add(id(19,22));const fee=g.treeRemovalCost(id(19,22)),before=g.coins;assert.equal(g.buildBuilding(n,'office',{clearTrees:true}),null);assert.equal(g.coins,before-fee-B.officePrice);g.undo();assert.equal(g.coins,before);assert.ok(g.trees.has(id(19,22)));

@@ -21,7 +21,7 @@ test('buying and upgrading homes increases residents, traffic supply and visual 
 test('hospital earns nothing while idle, and a real patient arrival credits the receipt',()=>{
   const g=city(),n=id(18,21);g.coins=10000;g.build(n,'clinic');const before=g.coins;g.updateGrowth(600);assert.equal(g.coins,before);
   const car={route:[id(17,20),id(18,20)],index:0,progress:.5,age:0,edgeAge:0,waitingNode:null,revision:g.revision,destination:id(18,20),targetBuilding:n,kind:'car'};
-  g.advance(car,.01);assert.equal(g.coins,before);g.advance(car,.5);assert.equal(g.coins,before);g.advance(car,1);assert.equal(g.coins,before+24);assert.equal(g.buildingAt(n).visitors,1);assert.equal(g.buildingAt(n).revenue,24);
+  g.syncCarPosition(car);g.advance(car,.01);assert.equal(g.coins,before);g.advance(car,.5);assert.equal(g.coins,before);g.advance(car,1);assert.equal(g.coins,before);for(let i=0;i<2400&&!car.parkingPaid;i++){g.time+=B.fixedStep;if(car.parkingPhase)g.updateOfficeParking(car,B.fixedStep);else g.advance(car,B.fixedStep);g.syncCarPosition(car);}assert.equal(car.parkingPhase,'parked');assert.equal(g.coins,before+24);assert.equal(g.buildingAt(n).visitors,1);assert.equal(g.buildingAt(n).revenue,24);
 });
 test('office, hotel and hospital upgrades raise both visitor fees and service capacity',()=>{
   for(const kind of ['office','hotel','clinic']){const g=city(),n=id(18,21);g.coins=100000;assert.equal(g.build(n,kind),null);const b=g.buildingAt(n),fee=visitFee(b),cap=visitCapacity(b);const before=g.coins;g.settleVisit({targetBuilding:n,destination:id(18,20),age:10,kind:'car'});assert.equal(g.coins,before+fee);

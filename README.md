@@ -1,6 +1,16 @@
-# Toll Empire · v0.10.0: playable isometric prototype
+# Toll Empire · v0.10.1: marked turns and continuous traffic
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
+
+## v0.10.1 traffic update
+
+Ground roads and flyovers have pale center-divider dashes, with a clear opening and U-turn symbol at designated points. Build menu → Traffic management → U-turn point costs 60 coins. The road inspector can add or remove it; removing refunds 60%. Markers persist in saves, participate in grouped undo and are removed with their road. Existing saves start with no markers.
+
+Driving routes now carry an incoming heading. Replanning cannot reverse at an unmarked tile; ground markers do not authorize turns on the flyover above. A legal reversal follows a 1.2-second semicircle between the two lanes. Off-road parking visits may turn inside the property before returning to the street. Without a legal route cars wait or continue forward to a city gate.
+
+Toll traffic maintains physical following distance across successive road tiles, preventing queued cars from overlapping and hiding one another. Planner vehicles are not deleted when a road edit invalidates their itinerary: they stop visibly; restoring the missing road lets them continue. Hospital, store, hotel and home visits now enter a site, stop and leave instead of ending in the road. Removing a visited building preserves its current car positions and departure path. Only a completed city-gate exit retires a normal planner trip, with a gradual under-gateway fade rather than an abrupt cut. Full car and bus artwork includes tires, roof glass and directional lights in sixteen cached orientations; transparent sprite padding is trimmed to reduce fill cost.
+
+The extended browser stress run (`node scripts/render-benchmark.mjs --mobile-dpr --long`) samples 600 real rAF frames with 120 warm-up frames: 82 buildings, initially 250 cars (238 remaining), 2,112 forest plots, 1.5 DPR; 59.3 rAF FPS, mean CPU work 5.09 ms, p95 9.2 ms, five frame intervals over 25 ms. Earlier renderer-only figures below describe the initial prototype and are not a sustained-phone guarantee.
 
 ## Isometric 2.5D prototype
 
@@ -141,7 +151,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-104 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
+111 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 

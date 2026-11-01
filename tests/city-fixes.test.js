@@ -33,8 +33,8 @@ test('bent flyovers reserve a contiguous elevated route over clear grass and und
   g.tiles[bend]='building';assert.ok(g.planBentFlyover(start,bend,end).error);
 });
 test('cars completing a toll trip remain visible while driving out and pay only once',()=>{
-  const g=city(),n=id(19,20);g.build(n,'toll');const car={route:[id(18,20),n],index:0,progress:.99,age:0,edgeAge:0,waitingNode:null,revision:g.revision,destination:n,targetBuilding:null,angle:0};const before=g.coins;
-  g.advance(car,.1);assert.equal(car.done,undefined);assert.equal(g.coins,before+10);g.advance(car,.5);g.syncCarPosition(car);assert.ok(car.worldX>19.5);assert.equal(car.done,undefined);g.advance(car,1);assert.equal(car.done,true);assert.equal(g.coins,before+10);
+  const g=city(),n=id(31,20);g.build(n,'toll');const car={route:[id(30,20),n],index:0,progress:.99,age:0,edgeAge:0,waitingNode:null,revision:g.revision,destination:n,targetBuilding:null,angle:0};const before=g.coins;
+  g.advance(car,.1);assert.equal(car.done,undefined);assert.equal(g.coins,before+10);g.advance(car,.5);g.syncCarPosition(car);assert.ok(car.worldX>31.5);assert.equal(car.done,undefined);g.advance(car,1);assert.equal(car.done,true);assert.equal(g.coins,before+10);
 });
 test('upgraded building bodies fit their own tile and straight river migration preserves city structures',()=>{
   for(let level=1;level<=5;level++){const style=buildingStyle({level});assert.ok(style.height<=40);assert.ok(style.width<=44);}

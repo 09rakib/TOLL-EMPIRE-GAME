@@ -14,14 +14,14 @@ export const plannerMethods={
   addPlannerCar(origin,destination,target=null,kind=null){
     if(origin===destination)return false;const vot=valueOfTime(this.random()),route=this.route(origin,destination,vot);if(!route||route.length<2)return false;
     if(this.cars.some(c=>c.route[c.index]===origin&&c.progress<.8))return false;
-    const car=this.pool.pop()||{};Object.assign(car,{route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination,origin,targetBuilding:target,kind:kind||(this.random()<B.plannerBusChance?'bus':'car'),revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,parkingPhase:null,parkingOffice:null,parkingSlot:null,parkingPaid:false});
+    const car=this.pool.pop()||{};Object.assign(car,{route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination,origin,targetBuilding:target,kind:kind||(this.random()<B.plannerBusChance?'bus':'car'),revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,parkingPhase:null,parkingOffice:null,parkingSlot:null,parkingPaid:false,heading:null,turn:null,stranded:false,blocked:false,exiting:false});
     this.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;this.cars.push(car);return true;
   },
   spawnPlanner(){
     if(this.cars.length>=this.trafficBudget())return false;
     const ends=this.endpoints;let origin=ends[this.random()<.5?0:1],destination=origin===ends[0]?ends[1]:ends[0],target=null;
     if(this.businessDestinations.length&&this.random()<.75){const site=this.businessDestinations[Math.floor(this.random()*this.businessDestinations.length)];destination=site.node;target=site.building;if(this.homeDestinations.length&&this.random()<.55)origin=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(origin===destination)origin=destination===ends[0]?ends[1]:ends[0];}
-    else if(this.homeDestinations.length&&this.random()<.65){destination=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(destination===origin)destination=origin===ends[0]?ends[1]:ends[0];const home=this.buildings.find(b=>b.kind==='garage-home'&&this.buildingEntrance(b)===destination);if(home)target=id(home.x,home.y);}
+    else if(this.homeDestinations.length&&this.random()<.65){destination=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(destination===origin)destination=origin===ends[0]?ends[1]:ends[0];const home=this.buildings.find(b=>b.type===0&&this.buildingEntrance(b)===destination);if(home)target=id(home.x,home.y);}
     return this.addPlannerCar(origin,destination,target);
   },
   settleVisit(car){

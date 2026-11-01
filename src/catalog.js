@@ -1,6 +1,7 @@
 import {B} from './balance.js';
 import {PROJECTS} from './projects.js';
 export const catalog=[
+  {id:'uturn',name:'U-turn point',icon:'undo',category:'traffic',cost:60,unit:'/ point',hint:'Mark a road where vehicles may reverse direction. Without this point they continue forward, find another legal route or wait. Demolish removes the marker first.'},
   ...[['parking','Parking area',500,'office'],['police','Police station',1200,'office'],['supermarket','Supermarket',1100,'shop'],['university','University',1800,'office']].map(([id,name,cost,icon])=>({id,name,cost,icon,category:'city',plannerOnly:true,unit:'4 × 4 · 16 tiles',hint:name+' · five visual upgrade levels. Tap the top-left of a 4 × 4 site. Build first; connect a city road later to open.'})),
   {id:'garage-home',name:'Home + parking',icon:'home',category:'city',cost:220,unit:'2 × 1 · 20 residents',hint:'One house tile and one private parking tile. Connect the parking side to a city road.'},
   ...Object.entries(PROJECTS).map(([id,p])=>({id,name:p.name,icon:p.icon,category:'projects',legacyOnly:true,cost:p.costs[0],minLevel:p.level,unit:'foundation',hint:`3 stages · ${p.costs.reduce((s,v)=>s+v,0)} coins total. ${p.benefit}.`})),

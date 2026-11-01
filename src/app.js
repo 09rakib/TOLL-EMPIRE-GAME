@@ -61,6 +61,7 @@ function updatePanel(){
   if(selected===null)return;
   if(!isRoad(game.tiles[selected])){closePanel();return;}
   const booth=game.tolls.get(selected),stats=game.stats(selected),type=game.tiles[selected],condition=game.congestionAt(selected);
+  $('#toggle-uturn').textContent=game.uturns.has(selected)?'Remove U-turn point · $36 refund':'Place U-turn point · $60';$('#toggle-uturn').disabled=!game.uturns.has(selected)&&game.coins<60;
   $('#toll-controls').hidden=!booth;$('#remove-toll').hidden=!booth;$('#panel-action').hidden=!!booth;
   $('#upgrade-booth').hidden=!booth;$('#comparison').hidden=!booth;$('#booth-detail').hidden=!booth;
   $('#booth-upgrade-preview').hidden=!booth||game.mode!=='planner';$('#toll-upgrade-preview').hidden=!booth||game.mode!=='planner';
@@ -216,6 +217,7 @@ $('#toll-slider').onchange=()=>sliderBaseline=null;$('#toll-slider').onpointerca
 $('#toll-minus').onclick=()=>changePrice((game.tolls.get(selected)?.price||0)-1);$('#toll-plus').onclick=()=>changePrice((game.tolls.get(selected)?.price||0)+1);
 $('#panel-action').onclick=()=>{if(selected===null)return;const error=game.build(selected,'toll');if(error)toast(error);else{changed();toast('Another booth is open. Find its sweet spot.');}};
 $('#upgrade-booth').onclick=()=>{const error=game.upgradeBooth(selected);if(error)toast(error);else{changed();toast(`Booth upgraded · ${game.tolls.get(selected).price} per vehicle.`);}};
+$('#toggle-uturn').onclick=()=>{const error=game.uturns.has(selected)?game.removeUTurn(selected):game.build(selected,'uturn');if(error)toast(error);else{changed();toast(game.uturns.has(selected)?'U-turn point open. Vehicles may reverse here.':'U-turn point removed. Vehicles must continue forward.');}};
 $('#remove-road').onclick=()=>{const error=game.removeRoad(selected);if(error)toast(error);else{closePanel();changed();toast('Road removed. Nearby buildings need another road connection.');}};
 $('#remove-toll').onclick=()=>{const error=game.removeToll(selected);if(error)toast(error);else{changed();toast('Booth removed. 60% of its investment returned.');}};
 $('#mini').style.cursor='pointer';$('#mini').onclick=e=>{const r=e.target.getBoundingClientRect();renderer.camera.x=(e.clientX-r.left)/r.width*B.size*B.tile;renderer.camera.y=(e.clientY-r.top)/r.height*B.size*B.tile;renderer.clamp();};
