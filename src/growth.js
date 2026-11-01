@@ -33,10 +33,10 @@ export const growthMethods={
     if(!BUILDINGS[kind]||!Number.isInteger(n)||n<0||n>=B.layerOffset)return 'Choose a building and a city tile.';
     const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot);
     if(plot.x+plotWidth(plot)>B.size||plot.y+plotHeight(plot)>B.size)return 'Keep the complete building footprint inside the city.';
-    if(cells.some(a=>this.tiles[a]!=='grass'))return kind==='park'?'A City Park needs 16 empty tiles in a 4 × 4 square.':kind==='office'?'An L-office and its parking need 4 empty tiles in a 2 × 2 square.':'Buildings need empty grass next to a road.';
+    if(cells.some(a=>this.tiles[a]!=='grass'))return kind==='park'?'A City Park needs 16 empty tiles in a 4 × 4 square.':kind==='office'?'An L-office and its parking need 4 empty tiles in a 2 × 2 square.':`${BUILDINGS[kind].name} needs ${plotWidth(plot)} × ${plotHeight(plot)} empty tiles. Tap the top-left tile of the site; keep roads and buildings outside it.`;
     const clear=!!options.clearTrees;
     if(!clear&&cells.some(a=>this.trees.has(a)))return 'Clear the trees on this plot before placing a building.';
-    if(kind!=='park'&&!plotPerimeter(plot).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
+    if(plot.footprint!==4&&kind!=='park'&&!plotPerimeter(plot).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
     if(this.flyovers.some(s=>s.nodes.some(a=>cells.includes(a))))return 'Keep the flyover corridor clear.';
     const price=BUILDINGS[kind].price+(clear?cells.reduce((sum,a)=>sum+this.treeRemovalCost(a),0):0);
     if(this.coins<price)return `You need ${price} coins for this building${clear?' and site clearing':''}.`;

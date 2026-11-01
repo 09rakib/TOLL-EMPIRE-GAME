@@ -1,4 +1,4 @@
-# Toll Empire · v0.9.0: mayor city builder
+# Toll Empire · v0.9.1: reliable campus placement
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
@@ -22,6 +22,10 @@ On Windows use `gradlew.bat assembleDebug`. Set `JAVA_HOME` and `ANDROID_HOME` t
 Build tasks copy current root `index.html`, `src/` and `public/` into generated Android assets automatically, disabling the browser service worker inside that copy. The source tree remains shared. Backgrounding saves progress, and Android local storage survives force-stop/relaunch. The app supports Android 7.0/API 24 and newer with a current Android System WebView.
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Previous releases were installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Version 0.9.0 is built and linted; device installation is intentionally deferred at the user’s request. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
+
+## v0.9.1 campus placement fix
+
+University, police, supermarket, hospital and public parking can be built on a free 4 × 4 site before a road exists. Tap its top-left tile; all sixteen cells must be empty land. Wooded sites still offer one combined clearing/build quote. Connect a city road to the campus perimeter to open it: disconnected campuses receive no visitor income or service coverage, and cannot upgrade. Mobile building placement now tolerates finger movement before release; a pinch still cancels placement. The preview appears on touch-down, and the build guide explains the full footprint and road-later workflow. Browser regression checks exercise each reported campus through the actual pointer handlers, including an 8-pixel finger movement.
 
 ## Continuous tools and L-shaped crossings
 
@@ -123,7 +127,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-97 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
+99 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 

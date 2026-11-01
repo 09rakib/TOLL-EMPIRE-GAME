@@ -39,7 +39,7 @@ function chooseTool(next){
   for(const b of document.querySelectorAll('[data-tool]')){b.classList.toggle('active',b.dataset.tool===tool);b.setAttribute('aria-pressed',String(b.dataset.tool===tool));}
   $('#build-guide').hidden=!tool;$('#hint').hidden=!!tool||renderer.heat;
   const item=catalog.find(i=>i.id===tool);
-  $('#build-instruction').textContent=tool==='park'?'City Park · 4 × 4 tiles · Road connection can come later':tool==='office'?'L-Office · 2 × 2 tiles · 3 building tiles + parking':item?item.name:'';
+  $('#build-instruction').textContent=tool==='park'?'City Park · 4 × 4 tiles · Road connection can come later':tool==='office'?'L-Office · 2 × 2 tiles · 3 building tiles + parking':BUILDINGS[tool]&&plannedPlot(0,tool,game.mode).footprint===4?BUILDINGS[tool].name+' · 4 × 4 empty tiles · Tap top-left · Connect road later':item?item.name:'';
   $('#map').style.cursor=tool?'crosshair':'grab';$('#flyover-bend').hidden=!['flyover','bridge'].includes(tool);$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';
   tutorial?.update();
 }
@@ -51,7 +51,7 @@ function openTrees(n,resume=null){
 function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const kind=resumeAfterClear,site=!!BUILDINGS[kind],name=BUILDINGS[kind]?.name||'Building',clearing=treeArea.reduce((sum,n)=>sum+game.treeRemovalCost(n),0),price=BUILDINGS[kind]?.price||0,cost=clearing+(site?price:0),count=treeArea.reduce((sum,n)=>sum+game.treeCount(n),0);$('#tree-info').textContent=count+' trees · $'+clearing+' clearing'+(site?' + $'+price+' '+name+' · '+treeArea.length+' tiles':'');$('#tree-panel h2').textContent=site?'Build '+name:'Wooded plot';$('#tree-panel .tree-note').textContent=site?'This payment clears the full footprint and builds immediately. Each tile is reserved as part of the same property.':'Clear these trees before placing roads or buildings. The land stays clear after saving.';$('#clear-plot').textContent=(site?'Clear & build '+name.toLowerCase()+' · $':'Clear plot · $')+cost;$('#clear-plot').disabled=game.coins<cost;}
 $('#close-trees').onclick=()=>{$('#tree-panel').hidden=true;renderer.selected=null;treeNode=null;};
 $('#clear-plot').onclick=()=>{const site=!!BUILDINGS[resumeAfterClear],node=treeNode,error=site?game.buildBuilding(node,resumeAfterClear,{clearTrees:true}):game.clearTreeArea(treeArea);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;if(site){revealBuilding(node);return;}changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
-function revealBuilding(node){chooseTool(null);const b=game.buildingAt(node);if(b)renderer.focusBuilding(b);changed();toast((BUILDINGS[b?.kind]?.name||'Building')+' built. Tap to upgrade, paint or remove.');}
+function revealBuilding(node){chooseTool(null);const b=game.buildingAt(node);if(b)renderer.focusBuilding(b);changed();toast((BUILDINGS[b?.kind]?.name||'Building')+(b&&game.buildingEntrance(b)===null?' built · Connect a city road to open it.':' built. Tap to upgrade, paint or remove.'));}
 function openPanel(n){
   if(!isRoad(game.tiles[n]))return;
   if(tool)chooseTool(null);closeSheets();selected=n;renderer.selected=n;$('#road-panel').hidden=false;
@@ -166,6 +166,7 @@ canvas.addEventListener('pointerdown',e=>{
   renderer.dragging=true;renderer.velocityX=0;renderer.velocityY=0;
   if(pointers.size===2){finishStroke(false);const [a,b]=[...pointers.values()];pinch={distance:Math.hypot(a.x-b.x,a.y-b.y)};if(gesture){gesture.moved=true;gesture.wasPinch=true;}return;}
   gesture={...p,startX:p.x,startY:p.y,moved:false,wasPinch:false,visited:new Set()};lastBuilt=renderer.tileAt(p.x,p.y);
+  if(BUILDINGS[tool]&&lastBuilt>=0)renderer.ghost={node:lastBuilt,...plannedPlot(lastBuilt,tool,game.mode),valid:!game.validateBuilding(lastBuilt,tool,{clearTrees:true})};
   if(['road','main','demolish','clear-trees'].includes(tool))game.beginStroke(tool);
 });
 canvas.addEventListener('pointermove',e=>{
@@ -173,7 +174,7 @@ canvas.addEventListener('pointermove',e=>{
   if(tool&&n>=0){
     const span=tool==='flyover'||tool==='bridge';
     const bent=span&&bentFlyover;const plan=bent&&spanBend!==null?(tool==='bridge'?game.planBentBridge(spanStart,spanBend,n):game.planBentFlyover(spanStart,spanBend,n)):game.planSpan(spanStart??n,n,tool);
-    renderer.ghost={node:n,...plannedPlot(n,tool,game.mode),valid:span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:!game.validate(n,tool)};
+    renderer.ghost={node:n,...plannedPlot(n,tool,game.mode),valid:span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:BUILDINGS[tool]?!game.validateBuilding(n,tool,{clearTrees:true}):!game.validate(n,tool)};
     if(span&&spanStart!==null)renderer.spanPreview=bent&&spanBend===null?null:plan;
   }
   if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,p);
@@ -186,7 +187,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 canvas.addEventListener('pointerup',e=>{
   const p=local(e);pointers.delete(e.pointerId);
-  if(gesture&&!gesture.moved&&!gesture.wasPinch){const n=renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
+  if(gesture&&!gesture.wasPinch&&(!gesture.moved||!!BUILDINGS[tool])){const n=renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
   if(gesture?.moved&&!gesture.wasPinch&&['road','main','demolish','clear-trees'].includes(tool))paintTo(renderer.tileAt(p.x,p.y));
   if(!pointers.size){finishStroke();gesture=null;pinch=null;renderer.dragging=false;}else if(gesture)gesture.wasPinch=true;
 });
