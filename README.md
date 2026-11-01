@@ -23,6 +23,10 @@ Build tasks copy current root `index.html`, `src/` and `public/` into generated 
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
 
+## Straight river and animated water
+
+The river is straight again, with animated 2D wave strokes on visible water tiles. River layout 3 migrates natural terrain while retaining existing buildings, streets and bridge water. Bridges retain their original crossings.
+
 ## Mayor satisfaction
 
 The compact smile button opens the mayor report. Its score reflects actual road density, average toll prices, connected hospital distance from homes, police coverage, nearby parks and university access. Distance follows the road graph, so an isolated hospital does not count. Each factor has a visible score and improvement suggestion. This is computed from the city and does not overwrite player progress.

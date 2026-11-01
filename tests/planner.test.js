@@ -78,5 +78,5 @@ test('40x40 saves expand to 64x64 preserving structures, coordinates, city money
 });
 test('expanded land supports connected construction past the old city boundary',()=>{
   const g=city();g.coins=10000;for(let x=32;x<=48;x++)assert.equal(g.build(id(x,20),'road'),null);
-  assert.equal(g.build(id(44,16),'clinic'),null);assert.ok(g.businessDestinations.some(d=>d.building===id(44,16)));
+  assert.equal(g.build(id(48,16),'clinic'),null);assert.ok(g.businessDestinations.some(d=>d.building===id(48,16)));
 });

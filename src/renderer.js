@@ -4,7 +4,6 @@ import {id,point,isRoad} from './world.js';
 import {THEMES,DISTRICTS} from './campaign.js';
 import {drawPlannerBuilding,drawToll} from './architecture.js';
 import {PAVEMENT_WIDTH} from './walkways.js';
-import {riverCurve,riverCells} from './river.js';
 const T=B.tile;
 function rounded(ctx,x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}}
 export class Renderer {
@@ -29,7 +28,7 @@ export class Renderer {
   }
   tree(ctx,x,y,s=1){ctx.fillStyle='#607e4724';ctx.beginPath();ctx.ellipse(x+6*s,y+9*s,11*s,6*s,0,0,7);ctx.fill();rounded(ctx,x-1.5*s,y,3*s,13*s,1,'#7f7954');ctx.fillStyle='#74975c';ctx.beginPath();ctx.arc(x,y-3*s,10*s,0,7);ctx.fill();ctx.fillStyle='#86a668';ctx.beginPath();ctx.arc(x-3*s,y-6*s,7*s,0,7);ctx.fill();}
   bake(){
-    const c=this.terrain.getContext('2d'),tiles=this.game.tiles,theme=THEMES[this.game.settings.theme],smoothRiver=this.game.riverLayout===2?riverCells():null;c.fillStyle=theme.grass[0];c.fillRect(0,0,this.terrain.width,this.terrain.height);
+    const c=this.terrain.getContext('2d'),tiles=this.game.tiles,theme=THEMES[this.game.settings.theme];c.fillStyle=theme.grass[0];c.fillRect(0,0,this.terrain.width,this.terrain.height);
     for(let y=0;y<B.size;y++)for(let x=0;x<B.size;x++){
       const n=id(x,y),type=tiles[n],px=x*T,py=y*T;
       if(type==='grass'||type==='building'){
@@ -44,12 +43,11 @@ export class Renderer {
           if(this.game.mode!=='planner'&&x>7&&x<31&&y>8&&y<30&&(x*3+y*7)%17===0){rounded(c,px+8,py+8,41,39,11,'#a5c48a');c.strokeStyle='#d4dfb8';c.lineWidth=4;c.beginPath();c.moveTo(px+11,py+38);c.lineTo(px+44,py+15);c.stroke();this.tree(c,px+17,py+18,.7);this.tree(c,px+41,py+42,.65);}
         }
       }
-      if(type==='river'&&!(smoothRiver?.has(n))){
+      if(type==='river'){
         c.fillStyle=theme.water;c.fillRect(px,py,T,T);c.fillStyle='#d4efed45';c.fillRect(px+5+(y%3)*7,py+13,23,2);c.fillRect(px+24,py+35,19,2);
         for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){const a=x+dx,b=y+dy;if(a<0||b<0||a>=B.size||b>=B.size)continue;const t=tiles[id(a,b)];if(t!=='river'&&t!=='bridge'){c.fillStyle='#c9d6ae';if(dx===-1)c.fillRect(px,py,4,T);if(dx===1)c.fillRect(px+T-4,py,4,T);if(dy===-1)c.fillRect(px,py,T,4);if(dy===1)c.fillRect(px,py+T-4,T,4);}}
       }
     }
-    if(this.game.riverLayout===2){const [a,b,d,e]=riverCurve();c.lineCap='round';c.beginPath();c.moveTo(a[0]*T,a[1]*T);c.bezierCurveTo(b[0]*T,b[1]*T,d[0]*T,d[1]*T,e[0]*T,e[1]*T);c.strokeStyle='#c8d6a6';c.lineWidth=3.7*T;c.stroke();c.strokeStyle=theme.water;c.lineWidth=3.2*T;c.stroke();c.lineCap='butt';}
     for(let y=0;y<B.size;y++)for(let x=0;x<B.size;x++){
       if(!isRoad(tiles[id(x,y)]))continue;
       const px=x*T,py=y*T,road=(a,b)=>a>=0&&b>=0&&a<B.size&&b<B.size&&isRoad(tiles[id(a,b)]);
@@ -103,11 +101,15 @@ export class Renderer {
       for(const [n,next]of [[span.nodes[0],span.nodes[1]],[span.nodes.at(-1),span.nodes.at(-2)]]){const p=point(n),q=point(next);c.save();c.translate((p.x+.5)*T,(p.y+.5)*T);c.rotate(Math.atan2(q.y-p.y,q.x-p.x));c.fillStyle='#f1c855';for(let i=0;i<3;i++){c.beginPath();c.moveTo(-8+i*8,-13);c.lineTo(-3+i*8,0);c.lineTo(-8+i*8,13);c.lineTo(-5+i*8,13);c.lineTo(i*8,0);c.lineTo(-5+i*8,-13);c.fill();}c.restore();}c.restore();
     }
   }
+  drawWaves(c){
+    const phase=this.game.time*.8;const cam=this.camera,left=Math.max(0,Math.floor((cam.x-this.width/2/cam.zoom)/T)),right=Math.min(B.size-1,Math.ceil((cam.x+this.width/2/cam.zoom)/T)),top=Math.max(0,Math.floor((cam.y-this.height/2/cam.zoom)/T)),bottom=Math.min(B.size-1,Math.ceil((cam.y+this.height/2/cam.zoom)/T));
+    c.strokeStyle='#dcf5ee99';c.lineWidth=1.6;for(let y=top;y<=bottom;y++)for(let x=left;x<=right;x++)if(this.game.tiles[id(x,y)]==='river'){c.save();c.beginPath();c.rect(x*T+5,y*T+5,T-10,T-10);c.clip();for(let row=0;row<3;row++){const py=y*T+12+row*16;c.beginPath();for(let dx=-4;dx<=T+4;dx+=2){const yy=py+Math.sin(dx*.16+phase+x*.5+row)*2.7;if(dx===-4)c.moveTo(x*T+dx,yy);else c.lineTo(x*T+dx,yy);}c.stroke();}c.restore();}
+  }
   draw(alpha=1){
     this.alpha=alpha;
     if(this.dirty)this.bake();
     const c=this.ctx,cam=this.camera;c.setTransform(this.dpr,0,0,this.dpr,0,0);c.clearRect(0,0,this.width,this.height);
-    c.translate(this.width/2,this.height/2);c.scale(cam.zoom,cam.zoom);c.translate(-cam.x,-cam.y);c.drawImage(this.terrain,0,0);
+    c.translate(this.width/2,this.height/2);c.scale(cam.zoom,cam.zoom);c.translate(-cam.x,-cam.y);c.drawImage(this.terrain,0,0);this.drawWaves(c);
     // Small park sprites draw directly into the visible frame, independently of
     // the large terrain cache used by the Android WebView.
     for(const b of this.game.buildings)if(plotWidth(b)>1||plotHeight(b)>1)c.drawImage(this.siteSprite(b),b.x*T,b.y*T,plotWidth(b)*T,plotHeight(b)*T);

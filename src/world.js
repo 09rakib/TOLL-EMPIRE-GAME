@@ -6,7 +6,7 @@ export function createCity(){
   const tiles=Array(B.size*B.size).fill('grass');
   for(let x=7;x<=31;x++)tiles[id(x,20)]='road';
   for(const n of riverCells())tiles[n]='river';
-  return {tiles,buildings:[],worldMode:'planner',riverLayout:2};
+  return {tiles,buildings:[],worldMode:'planner',riverLayout:3};
 }
 // Retained for reading old city backups and regression-testing the road engine.
 export function createLegacyCity() {

@@ -36,7 +36,7 @@ test('cars completing a toll trip remain visible while driving out and pay only 
   const g=city(),n=id(19,20);g.build(n,'toll');const car={route:[id(18,20),n],index:0,progress:.99,age:0,edgeAge:0,waitingNode:null,revision:g.revision,destination:n,targetBuilding:null,angle:0};const before=g.coins;
   g.advance(car,.1);assert.equal(car.done,undefined);assert.equal(g.coins,before+10);g.advance(car,.5);g.syncCarPosition(car);assert.ok(car.worldX>19.5);assert.equal(car.done,undefined);g.advance(car,1);assert.equal(car.done,true);assert.equal(g.coins,before+10);
 });
-test('upgraded building bodies fit their own tile and river reaches the northeast corner safely',()=>{
+test('upgraded building bodies fit their own tile and straight river migration preserves city structures',()=>{
   for(let level=1;level<=5;level++){const style=buildingStyle({level});assert.ok(style.height<=40);assert.ok(style.width<=44);}
-  assert.ok([...riverCells()].some(n=>Math.floor(n/B.size)===0&&n%B.size>=60));const g=city(),saved=serialize(g);delete saved.riverLayout;saved.tiles[id(60,5)]='building';saved.buildings.push({x:60,y:5,type:0,managed:true,level:1});const updated=migrate(saved);assert.equal(updated.tiles[id(60,5)],'building');assert.equal(updated.coins,g.coins);assert.ok(validateSave(updated));assert.equal(updated.riverLayout,2);
+  assert.equal(riverCells().size,B.size*2);for(const n of riverCells()){const x=n%B.size,y=Math.floor(n/B.size);assert.ok(y===Math.floor(35-x*.2)||y===Math.floor(35-x*.2)+1);}const g=city(),saved=serialize(g);delete saved.riverLayout;saved.tiles[id(60,5)]='building';saved.buildings.push({x:60,y:5,type:0,managed:true,level:1});const updated=migrate(saved);assert.equal(updated.tiles[id(60,5)],'building');assert.equal(updated.coins,g.coins);assert.ok(validateSave(updated));assert.equal(updated.riverLayout,3);
 });
