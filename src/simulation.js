@@ -248,7 +248,7 @@ export class Simulation {
   planSpan(start,end,tool){
     if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<0||start>=B.layerOffset||end>=B.layerOffset)return {error:'Choose two points inside the city.'};
     const a=point(start),b=point(end),length=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
-    if(a.x!==b.x&&a.y!==b.y)return {error:'Keep the span straight: choose the same row or column.'};
+    if(a.x!==b.x&&a.y!==b.y){const plans=[id(a.x,b.y),id(b.x,a.y)].map(bend=>tool==='flyover'?this.planBentFlyover(start,bend,end):this.planBentBridge(start,bend,end));return plans.find(p=>!p.error)||plans[0];}
     if(length<2||length>B.maxSpan)return {error:`Choose a span between 2 and ${B.maxSpan} tiles long.`};
     const dx=Math.sign(b.x-a.x),dy=Math.sign(b.y-a.y),nodes=[];
     for(let i=0;i<=length;i++)nodes.push(id(a.x+dx*i,a.y+dy*i));
@@ -281,8 +281,18 @@ export class Simulation {
     for(const [p,q]of [[a,b],[b,c]]){const len=Math.abs(q.x-p.x)+Math.abs(q.y-p.y),dx=Math.sign(q.x-p.x),dy=Math.sign(q.y-p.y);for(let i=nodes.length?1:0;i<=len;i++)nodes.push(id(p.x+dx*i,p.y+dy*i));}
     if(nodes.length-1>B.maxSpan*2||new Set(nodes).size!==nodes.length)return {error:'Keep each flyover under 28 tiles without doubling back.'};
     if(nodes.some(n=>!['grass','road','mainRoad','roundabout'].includes(this.tiles[n])||this.trees.has(n)||this.flyovers.some(s=>s.nodes.includes(n))))return {error:'Clear the corridor first. Flyovers cannot overlap trees, buildings, water or another flyover.'};
-    const cost=nodes.length*B.flyoverPrice;return {nodes,cost,error:this.coins<cost?`This flyover costs ${cost} coins.`:null};
+    const cost=nodes.length*B.flyoverPrice;return {nodes,cost,bent:true,error:this.coins<cost?`This flyover costs ${cost} coins.`:null};
   }
+  planBentBridge(start,bend,end){
+    if(![start,bend,end].every(n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset)||new Set([start,bend,end]).size<3)return {error:'Choose a start bank, water bend and opposite bank.'};
+    const a=point(start),b=point(bend),c=point(end);if((a.x!==b.x&&a.y!==b.y)||(b.x!==c.x&&b.y!==c.y))return {error:'Align both bridge legs to the grid.'};
+    if(!isRoad(this.tiles[start])||!['grass','road','mainRoad','roundabout'].includes(this.tiles[end]))return {error:'Start on a road and finish on clear land or a road.'};
+    const nodes=[];for(const [p,q]of [[a,b],[b,c]]){const len=Math.abs(q.x-p.x)+Math.abs(q.y-p.y),dx=Math.sign(q.x-p.x),dy=Math.sign(q.y-p.y);for(let i=nodes.length?1:0;i<=len;i++)nodes.push(id(p.x+dx*i,p.y+dy*i));}
+    if(nodes.length>B.maxSpan*2+1||new Set(nodes).size!==nodes.length)return {error:'Keep the bridge under 28 tiles without doubling back.'};
+    if(nodes.slice(1,-1).some(n=>this.tiles[n]!=='river')||this.trees.has(end))return {error:'Both bridge legs must stay over water. Clear the landing first.'};
+    const cost=(nodes.length-2)*B.bridgePrice+(this.tiles[end]==='grass'?B.roadPrice:0);return {nodes,cost,bent:true,error:this.coins<cost?'This bridge costs '+cost+' coins.':null};
+  }
+  buildBentBridge(start,bend,end){const plan=this.planBentBridge(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;for(const n of plan.nodes)this.tiles[n]=this.tiles[n]==='river'?'bridge':isRoad(this.tiles[n])?this.tiles[n]:'road';this.bridges.push({nodes:plan.nodes,cost:plan.cost,bent:true});this.record(before);this.rebuild();return null;}
   buildBentFlyover(start,bend,end){const plan=this.planBentFlyover(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;this.flyovers.push({nodes:plan.nodes,cost:plan.cost,bent:true});this.record(before);this.rebuild();return null;}
   demolish(n){
     const error=this.validate(n,'demolish');if(error)return error;

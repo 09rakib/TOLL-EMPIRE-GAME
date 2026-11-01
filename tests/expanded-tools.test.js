@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Simulation} from '../src/simulation.js';
+import {id} from '../src/world.js';
+import {B} from '../src/balance.js';
+import {serialize,validateSave} from '../src/storage.js';
+import {traceTiles} from '../src/brush.js';
+const city=()=>{const g=new Simulation(null,()=>.4);g.trees.clear();g.coins=100000;return g;};
+test('diagonal flyover endpoints automatically create a continuous L with a routable elevated bend',()=>{const g=city();g.tiles[id(23,23)]='road';g.rebuild();const p=g.planSpan(id(18,20),id(23,23),'flyover');assert.equal(p.error,null);assert.ok(p.bent);assert.equal(g.buildSpan(id(18,20),id(23,23),'flyover'),null);const span=g.flyovers[0];for(let i=1;i<span.nodes.length;i++){const a=span.nodes[i-1],b=span.nodes[i];assert.ok(Math.abs(a%B.size-b%B.size)+Math.abs(Math.floor(a/B.size)-Math.floor(b/B.size))===1);assert.ok(g.graph.get(a+B.layerOffset).includes(b+B.layerOffset));}assert.ok(validateSave(serialize(g)));g.undo();assert.equal(g.flyovers.length,0);});
+test('an L bridge turns over water, carries a route, saves and restores water on demolition',()=>{const g=city(),start=id(10,30),bend=id(10,32),end=id(13,32);g.tiles[start]='road';for(const n of [id(10,31),bend,id(11,32),id(12,32)])g.tiles[n]='river';g.tiles[end]='grass';g.rebuild();assert.equal(g.buildSpan(start,end,'bridge'),null);assert.ok(g.route(start,end,1));assert.ok(validateSave(serialize(g)));g.demolish(bend);assert.equal(g.tiles[bend],'river');g.undo();assert.equal(g.tiles[bend],'bridge');});
+test('invalid L bridge leaves trees, money and terrain intact',()=>{const g=city(),start=id(10,30),bend=id(10,32),end=id(13,32);g.tiles[start]='road';g.tiles[bend]='building';const before=g.coins;assert.ok(g.buildBentBridge(start,bend,end));assert.equal(g.coins,before);assert.equal(g.tiles[bend],'building');});
+test('one held tree-clearing stroke handles skipped tiles, charges each once and undoes together',()=>{const g=city(),nodes=traceTiles(id(18,21),id(18,27));for(const n of nodes)g.trees.add(n);const before=g.coins,cost=nodes.reduce((s,n)=>s+g.treeRemovalCost(n),0);g.beginStroke('clear-trees');for(const n of nodes)assert.equal(g.build(n,'clear-trees'),null);assert.ok(g.build(nodes[0],'clear-trees'));g.endStroke();assert.equal(g.coins,before-cost);assert.ok(nodes.every(n=>!g.trees.has(n)));g.undo();assert.equal(g.coins,before);assert.ok(nodes.every(n=>g.trees.has(n)));});

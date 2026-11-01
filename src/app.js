@@ -40,7 +40,7 @@ function chooseTool(next){
   $('#build-guide').hidden=!tool;$('#hint').hidden=!!tool||renderer.heat;
   const item=catalog.find(i=>i.id===tool);
   $('#build-instruction').textContent=tool==='park'?'City Park · 4 × 4 tiles · Road connection can come later':tool==='office'?'L-Office · 2 × 2 tiles · 3 building tiles + parking':item?item.name:'';
-  $('#map').style.cursor=tool?'crosshair':'grab';$('#flyover-bend').hidden=tool!=='flyover';$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';
+  $('#map').style.cursor=tool?'crosshair':'grab';$('#flyover-bend').hidden=!['flyover','bridge'].includes(tool);$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';
   tutorial?.update();
 }
 function closePanel(){selected=null;renderer.selected=null;$('#road-panel').hidden=true;}
@@ -132,14 +132,14 @@ function updateUI(){
 function build(n,quiet=false){
   if(n<0)return;
   if(tool==='flyover'||tool==='bridge'){
-    if(spanStart===null){if(!isRoad(game.tiles[n])){toast('Start the span on an existing road.');return;}spanStart=n;renderer.selected=n;$('#build-instruction').textContent=tool==='flyover'?(bentFlyover?'Flyover · Tap an aligned clear tile for the bend.':'Flyover · Tap an aligned road for the second ramp.'):'Bridge · Tap the opposite bank in this row or column.';return;}
+    if(spanStart===null){if(!isRoad(game.tiles[n])){toast('Start the span on an existing road.');return;}spanStart=n;renderer.selected=n;$('#build-instruction').textContent=tool==='flyover'?(bentFlyover?'Flyover · Tap an aligned clear tile for the bend.':'Flyover · Tap the exit road; diagonal ends create an L route.'):(bentFlyover?'Bridge · Tap an aligned water tile for the bend.':'Bridge · Tap the opposite bank; diagonal ends create an L route.');return;}
     if(n===spanStart){const current=tool;chooseTool(null);chooseTool(current);return;}
-    if(tool==='flyover'&&bentFlyover&&spanBend===null){const a=point(spanStart),b=point(n);if((a.x!==b.x&&a.y!==b.y)||!['grass','road','mainRoad','roundabout'].includes(game.tiles[n])||game.trees.has(n)){toast('Choose a clear bend tile aligned with the first ramp.');return;}spanBend=n;renderer.selected=n;$('#build-instruction').textContent='Flyover · Tap the exit road aligned with this bend.';return;}
-    const error=tool==='flyover'&&bentFlyover?game.buildBentFlyover(spanStart,spanBend,n):game.buildSpan(spanStart,n,tool);if(error){toast(error);return;}
+    if(bentFlyover&&spanBend===null){const a=point(spanStart),b=point(n);if((a.x!==b.x&&a.y!==b.y)||!(tool==='bridge'?['river']:['grass','road','mainRoad','roundabout']).includes(game.tiles[n])||game.trees.has(n)){toast('Choose a clear bend tile aligned with the first ramp.');return;}spanBend=n;renderer.selected=n;$('#build-instruction').textContent='Tap the exit road or bank aligned with this bend.';return;}
+    const error=bentFlyover?(tool==='bridge'?game.buildBentBridge(spanStart,spanBend,n):game.buildBentFlyover(spanStart,spanBend,n)):game.buildSpan(spanStart,n,tool);if(error){toast(error);return;}
     const label=tool;chooseTool(null);changed();toast(`${label==='flyover'?'Flyover':'Bridge'} connected. New routes are open!`);return;
   }
   if(tool==='toll'&&game.tolls.has(n)){openPanel(n);return;}
-  if(tool==='clear-trees'&&game.trees.has(n)){openTrees(n,'clear-trees');return false;}
+  if(tool==='clear-trees'){const error=game.clearTrees(n);if(error){if(!quiet)toast(error);return false;}changed();return true;}
   const currentTool=tool,error=game.build(n,tool);
   if(error){const wooded=!!BUILDINGS[currentTool]?error.startsWith('Clear the trees'):game.trees.has(n)&&currentTool!=='demolish';if(wooded){if(!quiet)openTrees(n,currentTool);else toast('Clear these trees before building here. Tap them to see the cost.');}else if(!quiet)toast(error);return false;}
   if(!!BUILDINGS[currentTool]){revealBuilding(n);return true;}
@@ -166,13 +166,13 @@ canvas.addEventListener('pointerdown',e=>{
   renderer.dragging=true;renderer.velocityX=0;renderer.velocityY=0;
   if(pointers.size===2){finishStroke(false);const [a,b]=[...pointers.values()];pinch={distance:Math.hypot(a.x-b.x,a.y-b.y)};if(gesture){gesture.moved=true;gesture.wasPinch=true;}return;}
   gesture={...p,startX:p.x,startY:p.y,moved:false,wasPinch:false,visited:new Set()};lastBuilt=renderer.tileAt(p.x,p.y);
-  if(['road','main','demolish'].includes(tool))game.beginStroke(tool);
+  if(['road','main','demolish','clear-trees'].includes(tool))game.beginStroke(tool);
 });
 canvas.addEventListener('pointermove',e=>{
   const p=local(e),n=renderer.tileAt(p.x,p.y);
   if(tool&&n>=0){
     const span=tool==='flyover'||tool==='bridge';
-    const bent=tool==='flyover'&&bentFlyover;const plan=bent&&spanBend!==null?game.planBentFlyover(spanStart,spanBend,n):game.planSpan(spanStart??n,n,tool);
+    const bent=span&&bentFlyover;const plan=bent&&spanBend!==null?(tool==='bridge'?game.planBentBridge(spanStart,spanBend,n):game.planBentFlyover(spanStart,spanBend,n)):game.planSpan(spanStart??n,n,tool);
     renderer.ghost={node:n,...plannedPlot(n,tool,game.mode),valid:span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:!game.validate(n,tool)};
     if(span&&spanStart!==null)renderer.spanPreview=bent&&spanBend===null?null:plan;
   }
@@ -181,13 +181,13 @@ canvas.addEventListener('pointermove',e=>{
   if(!gesture||gesture.wasPinch)return;
   const dx=p.x-gesture.x,dy=p.y-gesture.y;
   if(Math.hypot(p.x-gesture.startX,p.y-gesture.startY)>5)gesture.moved=true;
-  if(gesture.moved){if(['road','main','demolish'].includes(tool)){if(n!==lastBuilt)paintTo(n);}else if(!tool||tool==='flyover'||tool==='bridge'){renderer.camera.x-=dx/renderer.camera.zoom;renderer.camera.y-=dy/renderer.camera.zoom;renderer.velocityX=-dx/renderer.camera.zoom*30;renderer.velocityY=-dy/renderer.camera.zoom*30;renderer.clamp();}}
+  if(gesture.moved){if(['road','main','demolish','clear-trees'].includes(tool)){if(n!==lastBuilt)paintTo(n);}else if(!tool||tool==='flyover'||tool==='bridge'){renderer.camera.x-=dx/renderer.camera.zoom;renderer.camera.y-=dy/renderer.camera.zoom;renderer.velocityX=-dx/renderer.camera.zoom*30;renderer.velocityY=-dy/renderer.camera.zoom*30;renderer.clamp();}}
   gesture.x=p.x;gesture.y=p.y;
 });
 canvas.addEventListener('pointerup',e=>{
   const p=local(e);pointers.delete(e.pointerId);
   if(gesture&&!gesture.moved&&!gesture.wasPinch){const n=renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
-  if(gesture?.moved&&!gesture.wasPinch&&['road','main','demolish'].includes(tool))paintTo(renderer.tileAt(p.x,p.y));
+  if(gesture?.moved&&!gesture.wasPinch&&['road','main','demolish','clear-trees'].includes(tool))paintTo(renderer.tileAt(p.x,p.y));
   if(!pointers.size){finishStroke();gesture=null;pinch=null;renderer.dragging=false;}else if(gesture)gesture.wasPinch=true;
 });
 canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);finishStroke(false);gesture=null;pinch=null;renderer.dragging=false;renderer.velocityX=0;renderer.velocityY=0;});
@@ -197,7 +197,7 @@ $('#zoom-in').onclick=()=>renderer.zoom(B.zoomStep);$('#zoom-out').onclick=()=>r
 $('#heatmap').onclick=()=>{$('#build-sheet').hidden=true;renderer.heat=!renderer.heat;$('#heatmap').classList.toggle('active',renderer.heat);$('#heatmap').setAttribute('aria-pressed',String(renderer.heat));$('#heat-legend').hidden=!renderer.heat;$('#hint').hidden=renderer.heat||!!tool;toast(renderer.heat?'Traffic view: ● free · ▨ busy · ▧ jammed. Striped tiles show congestion.':'Back to city view.');};
 for(const button of document.querySelectorAll('[data-tool]'))button.onclick=()=>chooseTool(button.dataset.tool);
 for(const button of document.querySelectorAll('[data-direct-build]'))button.onclick=()=>chooseTool(button.dataset.directBuild);
-$('#flyover-bend').onclick=()=>{bentFlyover=!bentFlyover;spanStart=null;spanBend=null;renderer.spanPreview=null;$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';$('#build-instruction').textContent=bentFlyover?'Flyover · Choose start road, bend tile, then exit road.':'Flyover · Choose two aligned roads.';};
+$('#flyover-bend').onclick=()=>{bentFlyover=!bentFlyover;spanStart=null;spanBend=null;renderer.spanPreview=null;$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';$('#build-instruction').textContent=bentFlyover?'Choose start road, aligned bend tile, then exit bank/road.':'Choose two roads/banks. An L-shaped route is planned automatically.';};
 $('#cancel-build').onclick=()=>chooseTool(null);$('#close-panel').onclick=closePanel;
 $('#more-tools').onclick=()=>{const open=$('#build-sheet').hidden;if(tool)chooseTool(null);closePanel();closeSheets();$('#build-sheet').hidden=!open;if(open)renderBuildMenu();};
 $('#close-build').onclick=()=>$('#build-sheet').hidden=true;

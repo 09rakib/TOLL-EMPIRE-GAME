@@ -23,6 +23,10 @@ Build tasks copy current root `index.html`, `src/` and `public/` into generated 
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
 
+## Continuous tools and L-shaped crossings
+
+Hold and drag Clear trees across plots: every visited tile is charged once, sparse pointer samples fill intervening tiles, and one Undo restores the entire stroke. Local/main roads use the same continuous drag gesture after clearing. Flyovers and river bridges automatically try both L corners for diagonal endpoints. Add bend also allows an explicit start → bend → end plan. Bridge interiors must remain over water; both flyover ramps require roads. Paths are real contiguous graph routes, not decorative spans.
+
 ## Straight river and animated water
 
 The river is straight again, with animated 2D wave strokes on visible water tiles. River layout 3 migrates natural terrain while retaining existing buildings, streets and bridge water. Bridges retain their original crossings.
