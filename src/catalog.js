@@ -1,12 +1,13 @@
 import {B} from './balance.js';
 import {PROJECTS} from './projects.js';
 export const catalog=[
+  ...[['parking','Parking area',500,'office'],['police','Police station',1200,'office'],['supermarket','Supermarket',1100,'shop'],['university','University',1800,'office']].map(([id,name,cost,icon])=>({id,name,cost,icon,category:'city',plannerOnly:true,unit:'4 × 4 · 16 tiles',hint:name+' · five visual upgrade levels. Clear the full site and connect a city road.'})),
   {id:'garage-home',name:'Home + parking',icon:'home',category:'city',cost:220,unit:'2 × 1 · 20 residents',hint:'One house tile and one private parking tile. Connect the parking side to a city road.'},
   ...Object.entries(PROJECTS).map(([id,p])=>({id,name:p.name,icon:p.icon,category:'projects',legacyOnly:true,cost:p.costs[0],minLevel:p.level,unit:'foundation',hint:`3 stages · ${p.costs.reduce((s,v)=>s+v,0)} coins total. ${p.benefit}.`})),
   {id:'home',name:'Home',icon:'home',category:'city',cost:B.homePrice,unit:'20 residents',hint:'Build on connected grass. Creates new trips and residents.'},
-  {id:'shop',name:'Shop',icon:'shop',category:'city',cost:B.shopPrice,unit:'8 / customer',hint:'Customers arriving by road pay on arrival. Upgrades improve the shop and capacity.'},
+  {id:'shop',name:'Store',icon:'shop',category:'city',cost:B.shopPrice,unit:'2 × 2 · 8 / customer',hint:'Customers arriving by road pay on arrival. Upgrades improve the shop and capacity.'},
   {id:'office',name:'L-Office',icon:'office',category:'city',cost:B.officePrice,unit:'2 × 2 · parking included',hint:'Three tiles form the L-shaped office; one tile is working parking. Cars park, workers pay, then cars drive back out.'},
-  {id:'clinic',name:'Hospital',icon:'hospital',plannerOnly:true,category:'city',cost:B.hospitalPrice,unit:'24 / patient',hint:'Patients must reach the hospital. Upgrade beds, fees and the building itself.'},
+  {id:'clinic',name:'Hospital',icon:'hospital',plannerOnly:true,category:'city',cost:B.hospitalPrice,unit:'4 × 4 · 24 / patient',hint:'Patients must reach the hospital. Upgrade beds, fees and the building itself.'},
   {id:'hotel',name:'Hotel',icon:'hotel',plannerOnly:true,category:'city',cost:B.hotelPrice,unit:'20 / guest',hint:'Earn from arriving guests. Develop a guesthouse into a luxury hotel.'},
   {id:'park',name:'City Park',icon:'tree',category:'city',cost:B.parkPrice,unit:'4 × 4 · 16 tiles',hint:'A landscaped park with pond, fountain, sports and play areas. Place anywhere on clear land; connect a road for walking visitors.'},
   {id:'road',name:'Local road',icon:'road',category:'roads',cost:B.roadPrice,unit:'/ tile',hint:'Two lanes. Connect to any existing road.'},

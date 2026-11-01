@@ -15,7 +15,7 @@ test('planner grows a dense persistent forest only on empty grass, including old
 });
 test('wooded plots block every building and road until the quoted clearing fee is paid',()=>{
   for(const kind of ['home','office','clinic','hotel','park','road','main']){
-    const g=new Simulation(null,()=>.4),n=id(18,['park','office'].includes(kind)?21:19);g.coins=10000;const area=plotCells(plannedPlot(n,kind));for(const cell of area)g.trees.delete(cell);g.trees.add(n);const balance=g.coins,cost=g.treeRemovalCost(n);
+    const g=new Simulation(null,()=>.4),n=id(18,['park','office','clinic'].includes(kind)?21:19);g.coins=10000;const area=plotCells(plannedPlot(n,kind));for(const cell of area)g.trees.delete(cell);g.trees.add(n);const balance=g.coins,cost=g.treeRemovalCost(n);
     assert.match(g.build(n,kind),/Clear the trees/);assert.equal(g.coins,balance);
     assert.equal(g.clearTrees(n),null);assert.equal(g.coins,balance-cost);assert.equal(g.trees.has(n),false);
     assert.equal(g.build(n,kind),null);
@@ -31,14 +31,14 @@ test('clearing rejects insufficient money, charges once, saves and supports two-
 });
 test('removing a road removes its fixtures and disconnects businesses; undo restores all',()=>{
   const g=new Simulation(null,()=>.4),road=id(18,20),plot=id(18,19);g.trees.delete(plot);g.coins=10000;
-  g.build(plot,'clinic');g.build(road,'toll');g.upgradeBooth(road);const before=g.coins,refund=Math.round((B.roadPrice+B.tollPrice+B.boothUpgradePrices[0])*B.refund);
+  g.build(plot,'hotel');g.build(road,'toll');g.upgradeBooth(road);const before=g.coins,refund=Math.round((B.roadPrice+B.tollPrice+B.boothUpgradePrices[0])*B.refund);
   assert.equal(g.removeRoad(road),null);assert.equal(g.coins,before+refund);assert.equal(g.tiles[road],'grass');assert.equal(g.tolls.has(road),false);assert.equal(g.buildingEntrance(g.buildingAt(plot)),null);
   assert.ok(g.clearTrees(road));g.undo();assert.equal(g.coins,before);assert.equal(g.tiles[road],'road');assert.equal(g.tolls.get(road).level,2);assert.notEqual(g.buildingEntrance(g.buildingAt(plot)),null);
   assert.ok(g.removeRoad(g.endpoints[0]));
 });
 test('removing any city building refunds investment, preserves cleared land and is undoable',()=>{
   for(const kind of ['home','office','clinic','hotel','park']){
-    const g=new Simulation(null,()=>.4),n=id(18,['park','office'].includes(kind)?21:19);g.coins=10000;for(const cell of plotCells(plannedPlot(n,kind)))g.trees.delete(cell);g.trees.add(n);g.clearTrees(n);g.build(n,kind);const value=g.buildingAt(n).investment,balance=g.coins;
+    const g=new Simulation(null,()=>.4),n=id(18,['park','office','clinic'].includes(kind)?21:19);g.coins=10000;for(const cell of plotCells(plannedPlot(n,kind)))g.trees.delete(cell);g.trees.add(n);g.clearTrees(n);g.build(n,kind);const value=g.buildingAt(n).investment,balance=g.coins;
     assert.equal(g.demolish(n),null);assert.equal(g.tiles[n],'grass');assert.equal(g.coins,balance+Math.round(value*B.refund));assert.equal(g.trees.has(n),false);
     g.undo();assert.equal(g.tiles[n],'building');assert.equal(g.buildingAt(n).kind,kind);
   }

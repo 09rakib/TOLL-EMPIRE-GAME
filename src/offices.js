@@ -1,10 +1,13 @@
+import {parkingBay,parkingCapacity} from './campus-art.js';
+import {plotPerimeter} from './plots.js';
 import {B} from './balance.js';
 import {id,point} from './world.js';
-export const hasParking=b=>b?.kind==='garage-home'||b?.type===2&&b?.footprint===2;
+export const hasParking=b=>b?.kind==='parking'||b?.kind==='garage-home'||b?.type===2&&b?.footprint===2;
 export function parkingCell(b){if(b.kind==='garage-home')return {x:b.x+1,y:b.y};const corner=b.parkingCorner??2;return {x:b.x+([1,2].includes(corner)?1:0),y:b.y+(corner>=2?1:0)};}
-export function parkingRoads(b){const p=parkingCell(b),candidates=[[p.x-1,p.y],[p.x+1,p.y],[p.x,p.y-1],[p.x,p.y+1]];return candidates.filter(([x,y])=>x>=0&&y>=0&&x<B.size&&y<B.size&&!(x>=b.x&&x<b.x+(b.width||2)&&y>=b.y&&y<b.y+(b.height||2))).map(([x,y])=>id(x,y));}
+export function parkingRoads(b){if(b.kind==='parking')return plotPerimeter(b);const p=parkingCell(b),candidates=[[p.x-1,p.y],[p.x+1,p.y],[p.x,p.y-1],[p.x,p.y+1]];return candidates.filter(([x,y])=>x>=0&&y>=0&&x<B.size&&y<B.size&&!(x>=b.x&&x<b.x+(b.width||2)&&y>=b.y&&y<b.y+(b.height||2))).map(([x,y])=>id(x,y));}
 export function chooseParkingCorner(plot,connected){for(const corner of [2,3,1,0]){const candidate={...plot,parkingCorner:corner};if(parkingRoads(candidate).some(n=>connected.has(n)))return corner;}return 2;}
 export function driveway(b,entrance,slot){
+  if(b.kind==='parking'){const t=B.tile,r=point(entrance),x=b.x*t,y=b.y*t,p=parkingBay(b,slot);const gate=[Math.max(x+8,Math.min(x+216,(r.x+.5)*t)),Math.max(y+8,Math.min(y+216,(r.y+.5)*t))];return [gate,[x+8,gate[1]],[x+8,p.y+30],[p.x,p.y+30],[p.x,p.y]];}
   const t=B.tile,p=parkingCell(b),r=point(entrance),x=p.x*t,y=p.y*t,u=slot===0?16:35;
   let gate,aisle;if(r.x<p.x){gate=[x+2,y+45];aisle=[x+5,y+45];}else if(r.x>p.x){gate=[x+t-2,y+45];aisle=[x+50,y+45];}else if(r.y<p.y){gate=[x+50,y+2];aisle=[x+50,y+45];}else{gate=[x+50,y+t-2];aisle=[x+50,y+45];}
   return [gate,aisle,[x+u,y+45],[x+u,y+23]];
@@ -17,7 +20,7 @@ export const officeMethods={
     if(car.parkingPhase==='waiting'){
       if(entrance===null||!this.graph.has(car.destination)){car.done=true;return;}
       const occupied=new Set(this.cars.filter(c=>c!==car&&!c.done&&c.parkingOffice===car.parkingOffice&&Number.isInteger(c.parkingSlot)).map(c=>c.parkingSlot));
-      const slot=[0,1].find(s=>!occupied.has(s));if(slot===undefined)return;
+      const slot=Array.from({length:b.kind==='parking'?parkingCapacity(b):2},(_,i)=>i).find(s=>!occupied.has(s));if(slot===undefined)return;
       car.parkingSlot=slot;car.parkingPhase='entering';car.parkingPath=[[car.worldX*B.tile,car.worldY*B.tile],...driveway(b,car.destination,slot)];car.parkingIndex=0;car.parkingDistance=0;
     }
     if(car.parkingPhase==='parked'){

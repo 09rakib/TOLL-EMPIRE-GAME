@@ -4,7 +4,7 @@ import {DISTRICTS,POLICIES,EVENTS,ACHIEVEMENTS,levelForXp,ensureContracts,newCon
 import {PROJECTS} from './projects.js';
 import {plotSize,plotWidth,plotHeight,plotCells,plotPerimeter,plannedPlot} from './plots.js';
 import {parkingRoads,chooseParkingCorner,hasParking} from './offices.js';
-export const BUILDINGS={home:{type:0,name:'Home',price:B.homePrice},shop:{type:1,name:'Shop',price:B.shopPrice},office:{type:2,name:'Office',price:B.officePrice},park:{type:3,name:'Park',price:B.parkPrice},clinic:{type:4,name:'Hospital',price:B.hospitalPrice},hotel:{type:5,name:'Hotel',price:B.hotelPrice},'garage-home':{type:0,name:'Home + parking',price:220}};
+export const BUILDINGS={home:{type:0,name:'Home',price:B.homePrice},shop:{type:1,name:'Shop',price:B.shopPrice},office:{type:2,name:'Office',price:B.officePrice},park:{type:3,name:'Park',price:B.parkPrice},clinic:{type:4,name:'Hospital',price:B.hospitalPrice},hotel:{type:5,name:'Hotel',price:B.hotelPrice},'garage-home':{type:0,name:'Home + parking',price:220},parking:{type:1,name:'Parking area',price:500},police:{type:1,name:'Police station',price:1200},supermarket:{type:1,name:'Supermarket',price:1100},university:{type:1,name:'University',price:1800}};
 export const growthMethods={
   metrics(){return {served:this.served,earned:Math.floor(this.earned),trips:this.campaign.trips,roads:this.tiles.filter(isRoad).length,main:this.tiles.filter(t=>t==='mainRoad').length,managed:this.buildings.filter(b=>b.managed&&(!b.project||b.projectStage===2)).length,buildingLevels:this.buildings.reduce((n,b)=>n+(b.managed?(b.level||1)-1:0),0),boothLevels:[...this.tolls.values()].reduce((s,t)=>s+t.level-1,0)};},
   buildingAt(n){const x=n%B.size,y=Math.floor(n/B.size);return this.buildings.find(b=>x>=b.x&&y>=b.y&&x<b.x+plotWidth(b)&&y<b.y+plotHeight(b));},
@@ -23,7 +23,7 @@ export const growthMethods={
       this.managedLevels+=level;
       if(b.type===0){this.population+=level*20;this.homeLevels+=level;this.homeDestinations.push(entrance);}
       if(b.type===3){this.parkLevels+=level;this.parkDestinations.push({node:entrance,building:id(b.x,b.y)});}
-      if([1,2,4,5].includes(b.type)){this.commercialLevels+=level;this.businessDestinations.push({node:entrance,building:id(b.x,b.y)});}
+      if([1,2,4,5].includes(b.type)&&!['police','university'].includes(b.kind)){this.commercialLevels+=level;this.businessDestinations.push({node:entrance,building:id(b.x,b.y)});}
       if(this.mode!=='planner')this.businessRate+=(B.buildingRevenue[b.type]||0)*Math.pow(1.45,level-1);
     }
     this.businessRate*=1+ranks*B.districtRevenueBoost;
