@@ -24,7 +24,7 @@ test('hospital earns nothing while idle, and a real patient arrival credits the 
   g.advance(car,.01);assert.equal(g.coins,before);g.advance(car,.5);assert.equal(g.coins,before);g.advance(car,1);assert.equal(g.coins,before+24);assert.equal(g.buildingAt(n).visitors,1);assert.equal(g.buildingAt(n).revenue,24);
 });
 test('office, hotel and hospital upgrades raise both visitor fees and service capacity',()=>{
-  for(const kind of ['office','hotel','clinic']){const g=city(),n=id(18,19);g.coins=100000;assert.equal(g.build(n,kind),null);const b=g.buildingAt(n),fee=visitFee(b),cap=visitCapacity(b);const before=g.coins;g.settleVisit({targetBuilding:n,destination:id(18,20),age:10,kind:'car'});assert.equal(g.coins,before+fee);
+  for(const kind of ['office','hotel','clinic']){const g=city(),n=id(18,kind==='office'?21:19);g.coins=100000;assert.equal(g.build(n,kind),null);const b=g.buildingAt(n),fee=visitFee(b),cap=visitCapacity(b);const before=g.coins;g.settleVisit({targetBuilding:n,destination:id(18,20),age:10,kind:'car'});assert.equal(g.coins,before+fee);
     g.upgradeBuilding(n);assert.ok(visitFee(b)>fee);assert.ok(visitCapacity(b)>cap);g.time=60;const balance=g.coins;g.settleVisit({targetBuilding:n,destination:id(18,20),age:10,kind:'car'});assert.ok(g.coins>balance+fee);
   }
 });
@@ -51,7 +51,7 @@ test('planner progress and visit receipts persist, while an older city is preser
   finally{if(previous===undefined)delete globalThis.localStorage;else globalThis.localStorage=previous;}
 });
 test('planner tutorial begins with homes, then tolls, then a working business',()=>{
-  const g=city();g.coins=10000;updateTutorial(g);assert.equal(g.campaign.tutorial.step,0);g.build(id(18,19),'home');updateTutorial(g);assert.equal(g.campaign.tutorial.step,1);g.build(id(19,20),'toll');updateTutorial(g);assert.equal(g.campaign.tutorial.step,2);g.build(id(22,19),'office');updateTutorial(g);assert.equal(g.campaign.tutorial.step,3);
+  const g=city();g.coins=10000;updateTutorial(g);assert.equal(g.campaign.tutorial.step,0);g.build(id(18,19),'home');updateTutorial(g);assert.equal(g.campaign.tutorial.step,1);g.build(id(19,20),'toll');updateTutorial(g);assert.equal(g.campaign.tutorial.step,2);g.build(id(22,21),'office');updateTutorial(g);assert.equal(g.campaign.tutorial.step,3);
 });
 test('undoing a building upgrade preserves later visitor receipts and paint',()=>{
   const g=city(),n=id(18,19);g.coins=10000;g.build(n,'clinic');g.upgradeBuilding(n);g.paintBuilding(n,3);

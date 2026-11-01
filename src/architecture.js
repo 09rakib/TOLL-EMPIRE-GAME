@@ -1,9 +1,11 @@
 import {B} from './balance.js';
 import {drawCityPark} from './park-art.js';
+import {drawOfficeCampus} from './office-art.js';
 const box=(c,x,y,w,h,r,fill,stroke)=>{c.beginPath();c.roundRect(x,y,w,h,r);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=1;c.stroke();}};
 export function buildingStyle(b){const level=b.level||1;return {level,floors:level,width:level===1?30:level===2?36:44,height:[0,24,28,32,36,40][level],luxury:level>=4};}
 export function drawPlannerBuilding(c,b){
   const T=B.tile,x=b.x*T,y=b.y*T,s=buildingStyle(b),level=s.level;
+  if(b.type===2&&b.footprint===2){drawOfficeCampus(c,b);return;}
   if(b.type===3&&b.footprint===4){drawCityPark(c,b);return;}
   if(b.type===3){box(c,x+3,y+5,49,46,9,'#8fb47d','#bad0a5');c.strokeStyle='#dfdbb5';c.lineWidth=3;c.beginPath();c.moveTo(x+8,y+44);c.lineTo(x+43,y+12);c.stroke();for(let i=0;i<level+1;i++){const px=x+12+(i%3)*14,py=y+13+Math.floor(i/3)*22;c.fillStyle='#5d8e57';c.beginPath();c.arc(px,py,6,0,7);c.fill();}if(level>=3){box(c,x+18,y+23,20,17,8,'#d9decc');box(c,x+21,y+26,14,11,6,'#6dc1ce');}return;}
   const defaults=[['#f5dfb8','#b46f56'],['#e4c9a7','#b4855f'],['#c3d9d6','#568c9d'],[],['#f0ede3','#b46f65'],['#ead9c0','#c9a968']],paints=[defaults[b.type],['#b5d1c5','#538c7b'],['#e1b4a1','#b87562'],['#e7d8b5','#b29863'],['#cbbfdc','#8e7ba8']];
@@ -33,6 +35,6 @@ export function drawToll(c,n,toll){
 }
 export function drawUpgradeComparison(canvas,item,toll=false){
   const c=canvas.getContext('2d'),level=item.level||1;c.clearRect(0,0,canvas.width,canvas.height);c.fillStyle='#f0f3e5';c.fillRect(0,0,canvas.width,canvas.height);
-  for(let side=0;side<2;side++){c.save();c.translate(side?180:35,0);const sample={...item,level:side?Math.min(5,level+1):level,x:0,y:1};if(toll&&side)sample.price=B.boothTollLimits[sample.level-1];if(toll)drawToll(c,B.size,sample);else if(item.footprint===4){c.translate(-28,0);c.scale(.45,.45);sample.y=0;drawPlannerBuilding(c,sample);}else drawPlannerBuilding(c,sample);c.restore();}
+  for(let side=0;side<2;side++){c.save();c.translate(side?180:35,0);const sample={...item,level:side?Math.min(5,level+1):level,x:0,y:1};if(toll&&side)sample.price=B.boothTollLimits[sample.level-1];if(toll)drawToll(c,B.size,sample);else if((item.footprint||1)>1){c.translate(-28,0);const scale=100/(item.footprint*B.tile);c.scale(scale,scale);sample.y=0;drawPlannerBuilding(c,sample);}else drawPlannerBuilding(c,sample);c.restore();}
   c.fillStyle='#5e7e60';c.font='11px Arial';c.textAlign='center';c.fillText(`Current · Lv ${level}`,63,133);c.fillText(level===5?'Maximum level':`After upgrade · Lv ${level+1}`,208,133);c.font='20px Arial';c.fillStyle='#a8b799';c.fillText('→',138,79);
 }

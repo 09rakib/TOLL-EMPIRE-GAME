@@ -3,11 +3,12 @@ import {id,isRoad} from './world.js';
 import {DISTRICTS,POLICIES,EVENTS,ACHIEVEMENTS,levelForXp,ensureContracts,newContract,contractProgress,districtFor} from './campaign.js';
 import {PROJECTS} from './projects.js';
 import {plotSize,plotCells,plotPerimeter,plannedPlot} from './plots.js';
+import {parkingRoads,chooseParkingCorner} from './offices.js';
 export const BUILDINGS={home:{type:0,name:'Home',price:B.homePrice},shop:{type:1,name:'Shop',price:B.shopPrice},office:{type:2,name:'Office',price:B.officePrice},park:{type:3,name:'Park',price:B.parkPrice},clinic:{type:4,name:'Hospital',price:B.hospitalPrice},hotel:{type:5,name:'Hotel',price:B.hotelPrice}};
 export const growthMethods={
   metrics(){return {served:this.served,earned:Math.floor(this.earned),trips:this.campaign.trips,roads:this.tiles.filter(isRoad).length,main:this.tiles.filter(t=>t==='mainRoad').length,managed:this.buildings.filter(b=>b.managed&&(!b.project||b.projectStage===2)).length,buildingLevels:this.buildings.reduce((n,b)=>n+(b.managed?(b.level||1)-1:0),0),boothLevels:[...this.tolls.values()].reduce((s,t)=>s+t.level-1,0)};},
   buildingAt(n){const x=n%B.size,y=Math.floor(n/B.size);return this.buildings.find(b=>x>=b.x&&y>=b.y&&x<b.x+plotSize(b)&&y<b.y+plotSize(b));},
-  buildingEntrance(b){return plotPerimeter(b).find(n=>this.cityConnected?.has(n))??null;},
+  buildingEntrance(b){return (b.type===2&&b.footprint===2?parkingRoads(b):plotPerimeter(b)).find(n=>this.cityConnected?.has(n))??null;},
   refreshDevelopment(){
     const connected=new Set(),queue=this.endpoints.filter(n=>this.graph.has(n));for(const n of queue)connected.add(n);
     for(let i=0;i<queue.length;i++)for(const n of this.graph.get(queue[i])||[])if(!connected.has(n)){connected.add(n);queue.push(n);}this.cityConnected=connected;
@@ -31,9 +32,9 @@ export const growthMethods={
   validateBuilding(n,kind,options={}){
     if(!BUILDINGS[kind]||!Number.isInteger(n)||n<0||n>=B.layerOffset)return 'Choose a building and a city tile.';
     const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot);
-    if(plot.x+plot.footprint>B.size||plot.y+plot.footprint>B.size)return 'Keep the entire 4 × 4 park inside the city.';
-    if(cells.some(a=>this.tiles[a]!=='grass'))return kind==='park'?'A City Park needs 16 empty tiles in a 4 × 4 square.':'Buildings need empty grass next to a road.';
-    const clear=kind==='park'&&options.clearTrees;
+    if(plot.x+plot.footprint>B.size||plot.y+plot.footprint>B.size)return 'Keep the complete building footprint inside the city.';
+    if(cells.some(a=>this.tiles[a]!=='grass'))return kind==='park'?'A City Park needs 16 empty tiles in a 4 × 4 square.':kind==='office'?'An L-office and its parking need 4 empty tiles in a 2 × 2 square.':'Buildings need empty grass next to a road.';
+    const clear=['park','office'].includes(kind)&&options.clearTrees;
     if(!clear&&cells.some(a=>this.trees.has(a)))return 'Clear the trees on this plot before placing a building.';
     if(kind!=='park'&&!plotPerimeter(plot).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
     if(this.flyovers.some(s=>s.nodes.some(a=>cells.includes(a))))return 'Keep the flyover corridor clear.';
@@ -44,8 +45,9 @@ export const growthMethods={
   buildBuilding(n,kind,options={}){
     const error=this.validateBuilding(n,kind,options);if(error)return error;
     const before=this.snapshot(),spec=BUILDINGS[kind],x=n%B.size,y=Math.floor(n/B.size);
-    const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot),clear=kind==='park'&&options.clearTrees;
+    const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot),clear=['park','office'].includes(kind)&&options.clearTrees;
     this.coins-=spec.price+(clear?cells.reduce((sum,a)=>sum+this.treeRemovalCost(a),0):0);for(const cell of cells){if(clear)this.trees.delete(cell);this.tiles[cell]='building';}this.buildings.push({x,y,footprint:plot.footprint,type:spec.type,kind,variant:0,level:1,managed:true,investment:spec.price,paint:0,visitors:0,revenue:0});
+    if(kind==='office'&&plot.footprint===2)this.buildings.at(-1).parkingCorner=chooseParkingCorner(plot,this.cityConnected);
     this.record(before);this.rebuild();return null;
   },
   buildingUpgradeCost(b){if(b.project)return PROJECTS[b.project].costs[(b.projectStage||0)+1]||0;const spec=Object.values(BUILDINGS).find(s=>s.type===b.type);return Math.round(spec.price*Math.pow(B.buildingUpgradeFactor,b.level||1));},

@@ -10,6 +10,7 @@ import {plannerMethods} from './planner.js';
 import {forestFor,forestMethods} from './forest.js';
 import {plotCells} from './plots.js';
 import {pedestrianMethods} from './pedestrians.js';
+import {officeMethods} from './offices.js';
 export const upgradeTypes={
   faster:{name:'Faster Cars',description:'+10% driving speed per level',icon:'road'},
   booths:{name:'Bigger Toll Booths',description:'+15% service capacity per level',icon:'toll'},
@@ -93,7 +94,7 @@ export class Simulation {
   advance(car,dt){
     if(car.done)return;
     const current=car.route[car.index],next=car.route[car.index+1];
-    if(next===undefined){if(this.mode==='planner'&&!this.warming){car.progress+=dt*B.carTilesPerSecond;car.age+=dt;if(car.progress<1)return;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;this.settleVisit(car);}car.done=true;return;}
+    if(next===undefined){if(this.mode==='planner'&&!this.warming){if(car.targetBuilding!==null&&car.targetBuilding!==undefined&&this.beginOfficeParking(car))return;car.progress+=dt*B.carTilesPerSecond;car.age+=dt;if(car.progress<1)return;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;this.settleVisit(car);}car.done=true;return;}
     car.age+=dt;car.edgeAge=(car.edgeAge||0)+dt;
     if(car.waitingNode!==null&&car.waitingNode!==undefined){
       if(!this.tolls.has(car.waitingNode)){car.waitingNode=null;}
@@ -122,12 +123,12 @@ export class Simulation {
   update(dt){
     if(this.paused)return;
     this.time+=dt;this.spawnClock+=dt;this.replanClock+=dt;
-    this.density.clear();for(const c of this.cars){const n=c.waitingNode??c.route[c.index];this.density.set(n,(this.density.get(n)||0)+1);}
+    this.density.clear();for(const c of this.cars){if(c.parkingPhase&&c.parkingPhase!=='waiting')continue;const n=c.waitingNode??c.route[c.index];this.density.set(n,(this.density.get(n)||0)+1);}
     const event=this.campaign.event?.status==='active'?this.eventSpec():null;
     const interval=this.mode==='planner'?this.plannerInterval()/(event?.demand||1):B.spawnInterval/((1+this.upgrades.traffic*B.trafficBoostPerLevel)*this.demandBonus*POLICIES[this.settings.policy].demand*(event?.demand||1));
     if(this.spawnClock>=interval){this.spawnClock=Math.min(this.spawnClock,interval);if(this.mode!=='planner'||this.cars.length<this.trafficBudget()){this.spawnClock-=interval;this.spawn();}}
     if(this.replanClock>=B.replanSeconds){this.replanClock=0;for(const car of this.cars)if(this.random()<B.replanShare)car.revision=-1;}
-    for(let i=this.cars.length-1;i>=0;i--){const car=this.cars[i];car.prevX=car.worldX;car.prevY=car.worldY;this.advance(car,dt);this.syncCarPosition(car);if(car.done){this.pool.push(car);this.cars.splice(i,1);}}
+    for(let i=this.cars.length-1;i>=0;i--){const car=this.cars[i];car.prevX=car.worldX;car.prevY=car.worldY;if(car.parkingPhase)this.updateOfficeParking(car,dt);else this.advance(car,dt);this.syncCarPosition(car);if(car.done){this.pool.push(car);this.cars.splice(i,1);}}
     this.tracker.update(this.time,this.graph);
     this.businessTracker.trim(this.time);
     while(this.visitEffects.length&&this.visitEffects[0].time<this.time-2)this.visitEffects.shift();
@@ -135,6 +136,7 @@ export class Simulation {
     this.updateWalkers(dt);
   }
   syncCarPosition(car){
+    if(car.parkingPhase)return;
     const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],a=point(from),b=point(to);let dx=b.x-a.x,dy=b.y-a.y,progress=car.progress;
     if(this.mode==='planner'&&car.index===car.route.length-1){const previous=point(car.route[Math.max(0,car.index-1)]);dx=a.x-previous.x;dy=a.y-previous.y;if(!dx&&!dy){dx=Math.cos(car.angle||0);dy=Math.sin(car.angle||0);}progress*=.9;}
     car.worldX=a.x+.5+dx*progress-dy*9/B.tile;car.worldY=a.y+.5+dy*progress+dx*9/B.tile;car.angle=Math.atan2(dy,dx);
@@ -155,7 +157,7 @@ export class Simulation {
     const signature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');if(signature!==this.walkTopologySignature){this.walkTopology++;this.walkTopologySignature=signature;}
     this.refreshDevelopment();
     for(const n of this.serviceNext.keys())if(!this.tolls.has(n))this.serviceNext.delete(n);
-    for(const car of this.cars){if(car.waitingNode!==null&&!this.tolls.has(car.waitingNode))car.waitingNode=null;if(car.route.some(n=>!this.graph.has(n)))car.done=true;}
+    for(const car of this.cars){if(car.waitingNode!==null&&!this.tolls.has(car.waitingNode))car.waitingNode=null;if(!car.parkingPhase&&car.route.some(n=>!this.graph.has(n)))car.done=true;}
     for(let i=this.cars.length-1;i>=0;i--)if(this.cars[i].done){this.pool.push(this.cars[i]);this.cars.splice(i,1);}
   }
   undo(){
@@ -330,3 +332,4 @@ Object.assign(Simulation.prototype,projectMethods);
 Object.assign(Simulation.prototype,plannerMethods);
   Object.assign(Simulation.prototype,forestMethods);
   Object.assign(Simulation.prototype,pedestrianMethods);
+  Object.assign(Simulation.prototype,officeMethods);

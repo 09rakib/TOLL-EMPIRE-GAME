@@ -1,4 +1,4 @@
-# Toll Empire · v0.7.0: visible parks and connected sidewalks
+# Toll Empire · v0.8.0: L-shaped offices and working parking
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
@@ -22,6 +22,10 @@ On Windows use `gradlew.bat assembleDebug`. Set `JAVA_HOME` and `ANDROID_HOME` t
 Build tasks copy current root `index.html`, `src/` and `public/` into generated Android assets automatically, disabling the browser service worker inside that copy. The source tree remains shared. Backgrounding saves progress, and Android local storage survives force-stop/relaunch. The app supports Android 7.0/API 24 and newer with a current Android System WebView.
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
+
+## v0.8.0 changes
+
+New offices use four tiles: an L-shaped building and working parking. Cars arrive, stop in one of two bays, pay and depart. Old compact offices remain intact to protect existing cities.
 
 ## v0.7.0 changes
 

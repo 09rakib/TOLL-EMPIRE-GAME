@@ -4,7 +4,7 @@ export const catalog=[
   ...Object.entries(PROJECTS).map(([id,p])=>({id,name:p.name,icon:p.icon,category:'projects',legacyOnly:true,cost:p.costs[0],minLevel:p.level,unit:'foundation',hint:`3 stages · ${p.costs.reduce((s,v)=>s+v,0)} coins total. ${p.benefit}.`})),
   {id:'home',name:'Home',icon:'home',category:'city',cost:B.homePrice,unit:'20 residents',hint:'Build on connected grass. Creates new trips and residents.'},
   {id:'shop',name:'Shop',icon:'shop',category:'city',cost:B.shopPrice,unit:'8 / customer',hint:'Customers arriving by road pay on arrival. Upgrades improve the shop and capacity.'},
-  {id:'office',name:'Office',icon:'office',category:'city',cost:B.officePrice,unit:'14 / worker',hint:'Earn when workers arrive. Higher levels become larger glass office towers.'},
+  {id:'office',name:'L-Office',icon:'office',category:'city',cost:B.officePrice,unit:'2 × 2 · parking included',hint:'Three tiles form the L-shaped office; one tile is working parking. Cars park, workers pay, then cars drive back out.'},
   {id:'clinic',name:'Hospital',icon:'hospital',plannerOnly:true,category:'city',cost:B.hospitalPrice,unit:'24 / patient',hint:'Patients must reach the hospital. Upgrade beds, fees and the building itself.'},
   {id:'hotel',name:'Hotel',icon:'hotel',plannerOnly:true,category:'city',cost:B.hotelPrice,unit:'20 / guest',hint:'Earn from arriving guests. Develop a guesthouse into a luxury hotel.'},
   {id:'park',name:'City Park',icon:'tree',category:'city',cost:B.parkPrice,unit:'4 × 4 · 16 tiles',hint:'A landscaped park with pond, fountain, sports and play areas. Place anywhere on clear land; connect a road for walking visitors.'},

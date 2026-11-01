@@ -2,6 +2,7 @@ import {B} from './balance.js';
 import {id} from './world.js';
 import {valueOfTime} from './pathfinder.js';
 import {POLICIES} from './campaign.js';
+import {plotPerimeter} from './plots.js';
 export const buildingKind=b=>b.kind||['home','shop','office','park','clinic','hotel'][b.type];
 export const buildingNames={home:'Home',shop:'Shop',office:'Office',park:'Park',clinic:'Hospital',hotel:'Hotel'};
 export function visitFee(b){return (B.plannerVisitFees[b.type]||0)*Math.pow(B.plannerFeeGrowth,(b.level||1)-1);}
@@ -13,7 +14,7 @@ export const plannerMethods={
   addPlannerCar(origin,destination,target=null,kind=null){
     if(origin===destination)return false;const vot=valueOfTime(this.random()),route=this.route(origin,destination,vot);if(!route||route.length<2)return false;
     if(this.cars.some(c=>c.route[c.index]===origin&&c.progress<.8))return false;
-    const car=this.pool.pop()||{};Object.assign(car,{route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination,origin,targetBuilding:target,kind:kind||(this.random()<B.plannerBusChance?'bus':'car'),revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false});
+    const car=this.pool.pop()||{};Object.assign(car,{route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination,origin,targetBuilding:target,kind:kind||(this.random()<B.plannerBusChance?'bus':'car'),revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,parkingPhase:null,parkingOffice:null,parkingSlot:null,parkingPaid:false});
     this.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;this.cars.push(car);return true;
   },
   spawnPlanner(){
@@ -25,7 +26,7 @@ export const plannerMethods={
   },
   settleVisit(car){
     if(car.targetBuilding===null||car.targetBuilding===undefined)return 0;
-    const b=this.buildingAt(car.targetBuilding);if(!b?.managed||b.project||!this.neighbors(car.targetBuilding).includes(car.destination)||!this.cityConnected.has(car.destination))return 0;
+    const b=this.buildingAt(car.targetBuilding);if(!b?.managed||b.project||!plotPerimeter(b).includes(car.destination)||!this.cityConnected.has(car.destination))return 0;
     const capacity=visitCapacity(b);if(!capacity)return 0;
     if(this.time<(this.admissionNext.get(car.targetBuilding)||0)){b.turnedAway=(b.turnedAway||0)+1;return 0;}
     const passengers=car.kind==='bus'?3:1;this.admissionNext.set(car.targetBuilding,this.time+60/capacity*passengers);
