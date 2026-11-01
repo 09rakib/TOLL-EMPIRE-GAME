@@ -12,6 +12,8 @@ Toll traffic maintains physical following distance across successive road tiles,
 
 The extended browser stress run (`node scripts/render-benchmark.mjs --mobile-dpr --long`) samples 600 real rAF frames with 120 warm-up frames: 82 buildings, initially 250 cars (238 remaining), 2,112 forest plots, 1.5 DPR; 59.3 rAF FPS, mean CPU work 5.09 ms, p95 9.2 ms, five frame intervals over 25 ms. Earlier renderer-only figures below describe the initial prototype and are not a sustained-phone guarantee.
 
+Version 0.10.1 APK built and linted successfully, installed as an in-place update on Vivo V2405A (version code 1001), and launched with the existing city intact. Initial AndroidRuntime/Chromium error logs were empty. Sustained on-device FPS and long play sessions remain to be measured.
+
 ## Isometric 2.5D prototype
 
 The `codex/isometric-2-5d` branch introduces a fixed isometric camera. Gameplay, tile IDs, building footprints, money, routes and save formats remain unchanged. Existing cities render in the new view. Stable v0.9.1 remains on `main`.
