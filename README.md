@@ -23,6 +23,10 @@ Build tasks copy current root `index.html`, `src/` and `public/` into generated 
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
 
+## Mayor satisfaction
+
+The compact smile button opens the mayor report. Its score reflects actual road density, average toll prices, connected hospital distance from homes, police coverage, nearby parks and university access. Distance follows the road graph, so an isolated hospital does not count. Each factor has a visible score and improvement suggestion. This is computed from the city and does not overwrite player progress.
+
 ## New campus buildings
 
 New hospitals, police stations, parking areas, supermarkets and universities occupy 4 × 4 sites (16 tiles). Stores occupy 2 × 2. All have five original Canvas upgrade appearances inspired by the supplied references, with paint, atomic full-site clearing, demolition and undo. Parking starts with four working bays and expands to twelve; actual arriving cars park, pay, then return to the street. Hospitals and stores retain visitor-based income. Public services provide coverage for the mayor satisfaction system. Existing small buildings retain their footprints.

@@ -1,3 +1,4 @@
+import {citySatisfaction} from './satisfaction.js';
 import {B} from './balance.js';
 import {isRoad,point} from './world.js';
 import {Simulation,upgradeTypes} from './simulation.js';
@@ -31,7 +32,7 @@ function toast(message){$('#toast').textContent=message;$('#toast').hidden=false
 function save(){clearTimeout(saveTimer);saveTimer=null;const ok=storage.save(game);$('#save-label').textContent=ok?'Progress autosaved':'Storage unavailable';return ok;}
 function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(save,350);}
 function changed(){renderer.dirty=true;scheduleSave();updateUI();}
-function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel'])$('#'+id).hidden=true;}
+function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel','satisfaction-panel'])$('#'+id).hidden=true;}
 function chooseTool(next){
   finishStroke(false);
   tool=tool===next?null:next;spanStart=null;spanBend=null;renderer.ghost=null;renderer.spanPreview=null;closePanel();closeSheets();
@@ -115,7 +116,11 @@ function renderShop(){
   }).join('');hydrateIcons();
   for(const b of document.querySelectorAll('[data-upgrade]'))b.onclick=()=>{const type=b.dataset.upgrade,error=game.buyUpgrade(type);if(error)toast(error);else{changed();renderShop();toast(`${upgradeTypes[type].name} upgraded to level ${game.upgrades[type]}.`);}};
 }
+function renderSatisfaction(mood){$('#satisfaction-report').innerHTML='<strong>'+mood.score+'% · '+mood.label+'</strong><p>'+mood.population+' residents · You are the city mayor.</p>'+mood.factors.map(f=>'<div class="project-requirement"><span>'+f.name+'</span><b>'+f.score+'%</b></div><progress max="100" value="'+f.score+'"></progress><p>'+f.tip+'</p>').join('');}
+$('#satisfaction').onclick=()=>{chooseTool(null);closeSheets();closePanel();$('#satisfaction-panel').hidden=false;renderSatisfaction(citySatisfaction(game));};
+$('#close-satisfaction').onclick=()=>$('#satisfaction-panel').hidden=true;
 function updateUI(){
+  const mood=citySatisfaction(game);$('#satisfaction').textContent='☺ '+mood.score+'%';$('#satisfaction').setAttribute('aria-label','Mayor satisfaction '+mood.score+' percent. Open city report');if(!$('#satisfaction-panel').hidden)renderSatisfaction(mood);
   $('#coins').textContent=money(game.coins);$('#income').textContent=money(game.totalIncome);
   $('#traffic-count').textContent=`${game.cars.length} cars on the road`;
   $('#zoom-label').textContent=`${Math.round(renderer.camera.zoom*100)}%`;

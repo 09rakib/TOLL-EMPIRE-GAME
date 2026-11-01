@@ -80,4 +80,3 @@ test('expanded land supports connected construction past the old city boundary',
   const g=city();g.coins=10000;for(let x=32;x<=48;x++)assert.equal(g.build(id(x,20),'road'),null);
   assert.equal(g.build(id(44,16),'clinic'),null);assert.ok(g.businessDestinations.some(d=>d.building===id(44,16)));
 });
-
