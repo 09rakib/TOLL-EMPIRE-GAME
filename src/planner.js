@@ -21,7 +21,7 @@ export const plannerMethods={
     if(this.cars.length>=this.trafficBudget())return false;
     const ends=this.endpoints;let origin=ends[this.random()<.5?0:1],destination=origin===ends[0]?ends[1]:ends[0],target=null;
     if(this.businessDestinations.length&&this.random()<.75){const site=this.businessDestinations[Math.floor(this.random()*this.businessDestinations.length)];destination=site.node;target=site.building;if(this.homeDestinations.length&&this.random()<.55)origin=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(origin===destination)origin=destination===ends[0]?ends[1]:ends[0];}
-    else if(this.homeDestinations.length&&this.random()<.65){destination=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(destination===origin)destination=origin===ends[0]?ends[1]:ends[0];}
+    else if(this.homeDestinations.length&&this.random()<.65){destination=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(destination===origin)destination=origin===ends[0]?ends[1]:ends[0];const home=this.buildings.find(b=>b.kind==='garage-home'&&this.buildingEntrance(b)===destination);if(home)target=id(home.x,home.y);}
     return this.addPlannerCar(origin,destination,target);
   },
   settleVisit(car){

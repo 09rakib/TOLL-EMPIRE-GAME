@@ -1,6 +1,7 @@
 import {B} from './balance.js';
 import {PROJECTS} from './projects.js';
 export const catalog=[
+  {id:'garage-home',name:'Home + parking',icon:'home',category:'city',cost:220,unit:'2 × 1 · 20 residents',hint:'One house tile and one private parking tile. Connect the parking side to a city road.'},
   ...Object.entries(PROJECTS).map(([id,p])=>({id,name:p.name,icon:p.icon,category:'projects',legacyOnly:true,cost:p.costs[0],minLevel:p.level,unit:'foundation',hint:`3 stages · ${p.costs.reduce((s,v)=>s+v,0)} coins total. ${p.benefit}.`})),
   {id:'home',name:'Home',icon:'home',category:'city',cost:B.homePrice,unit:'20 residents',hint:'Build on connected grass. Creates new trips and residents.'},
   {id:'shop',name:'Shop',icon:'shop',category:'city',cost:B.shopPrice,unit:'8 / customer',hint:'Customers arriving by road pay on arrival. Upgrades improve the shop and capacity.'},

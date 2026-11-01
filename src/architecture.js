@@ -5,6 +5,7 @@ const box=(c,x,y,w,h,r,fill,stroke)=>{c.beginPath();c.roundRect(x,y,w,h,r);if(fi
 export function buildingStyle(b){const level=b.level||1;return {level,floors:level,width:level===1?30:level===2?36:44,height:[0,24,28,32,36,40][level],luxury:level>=4};}
 export function drawPlannerBuilding(c,b){
   const T=B.tile,x=b.x*T,y=b.y*T,s=buildingStyle(b),level=s.level;
+  if(b.kind==='garage-home'){c.save();c.translate(x,y);drawPlannerBuilding(c,{...b,kind:'home',width:undefined,height:undefined,x:0,y:0});c.fillStyle='#697d80';c.fillRect(T+2,2,T-4,T-4);c.strokeStyle='#e8e9d4';c.lineWidth=2;c.strokeRect(T+9,7,17,31);c.strokeRect(T+29,7,17,31);c.fillStyle='#e8e9d4';c.font='bold 9px Arial';c.textAlign='center';c.fillText('P',T+28,49);c.restore();return;}
   if(b.type===2&&b.footprint===2){drawOfficeCampus(c,b);return;}
   if(b.type===3&&b.footprint===4){drawCityPark(c,b);return;}
   if(b.type===3){box(c,x+3,y+5,49,46,9,'#8fb47d','#bad0a5');c.strokeStyle='#dfdbb5';c.lineWidth=3;c.beginPath();c.moveTo(x+8,y+44);c.lineTo(x+43,y+12);c.stroke();for(let i=0;i<level+1;i++){const px=x+12+(i%3)*14,py=y+13+Math.floor(i/3)*22;c.fillStyle='#5d8e57';c.beginPath();c.arc(px,py,6,0,7);c.fill();}if(level>=3){box(c,x+18,y+23,20,17,8,'#d9decc');box(c,x+21,y+26,14,11,6,'#6dc1ce');}return;}

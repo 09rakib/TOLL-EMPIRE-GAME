@@ -1,7 +1,8 @@
 import {B} from './balance.js';
 import {id,point} from './world.js';
-export function parkingCell(b){const corner=b.parkingCorner??2;return {x:b.x+([1,2].includes(corner)?1:0),y:b.y+(corner>=2?1:0)};}
-export function parkingRoads(b){const p=parkingCell(b),candidates=[[p.x-1,p.y],[p.x+1,p.y],[p.x,p.y-1],[p.x,p.y+1]];return candidates.filter(([x,y])=>x>=0&&y>=0&&x<B.size&&y<B.size&&!(x>=b.x&&x<b.x+2&&y>=b.y&&y<b.y+2)).map(([x,y])=>id(x,y));}
+export const hasParking=b=>b?.kind==='garage-home'||b?.type===2&&b?.footprint===2;
+export function parkingCell(b){if(b.kind==='garage-home')return {x:b.x+1,y:b.y};const corner=b.parkingCorner??2;return {x:b.x+([1,2].includes(corner)?1:0),y:b.y+(corner>=2?1:0)};}
+export function parkingRoads(b){const p=parkingCell(b),candidates=[[p.x-1,p.y],[p.x+1,p.y],[p.x,p.y-1],[p.x,p.y+1]];return candidates.filter(([x,y])=>x>=0&&y>=0&&x<B.size&&y<B.size&&!(x>=b.x&&x<b.x+(b.width||2)&&y>=b.y&&y<b.y+(b.height||2))).map(([x,y])=>id(x,y));}
 export function chooseParkingCorner(plot,connected){for(const corner of [2,3,1,0]){const candidate={...plot,parkingCorner:corner};if(parkingRoads(candidate).some(n=>connected.has(n)))return corner;}return 2;}
 export function driveway(b,entrance,slot){
   const t=B.tile,p=parkingCell(b),r=point(entrance),x=p.x*t,y=p.y*t,u=slot===0?16:35;
@@ -9,9 +10,9 @@ export function driveway(b,entrance,slot){
   return [gate,aisle,[x+u,y+45],[x+u,y+23]];
 }
 export const officeMethods={
-  beginOfficeParking(car){const b=this.buildingAt(car.targetBuilding);if(!b||b.type!==2||b.footprint!==2||!parkingRoads(b).includes(car.destination))return false;car.parkingOffice=id(b.x,b.y);car.parkingSlot=null;car.parkingPhase='waiting';car.parkingPaid=false;return true;},
+  beginOfficeParking(car){const b=this.buildingAt(car.targetBuilding);if(!hasParking(b)||!parkingRoads(b).includes(car.destination))return false;car.parkingOffice=id(b.x,b.y);car.parkingSlot=null;car.parkingPhase='waiting';car.parkingPaid=false;return true;},
   updateOfficeParking(car,dt){
-    const b=this.buildingAt(car.parkingOffice);if(!b||b.type!==2||b.footprint!==2){car.done=true;return;}
+    const b=this.buildingAt(car.parkingOffice);if(!hasParking(b)){car.done=true;return;}
     car.age+=dt;const entrance=this.buildingEntrance(b);
     if(car.parkingPhase==='waiting'){
       if(entrance===null||!this.graph.has(car.destination)){car.done=true;return;}
@@ -22,6 +23,7 @@ export const officeMethods={
     if(car.parkingPhase==='parked'){
       if(entrance===null)return;
       car.destination=entrance;
+      if(b.type===0&&!car.parkingPaid){car.parkingPaid=true;car.parkUntil=this.time+14+this.random()*8;}
       if(!car.parkingPaid&&this.time>=(this.admissionNext.get(car.parkingOffice)||0)){const paid=this.settleVisit(car);if(paid>0){car.parkingPaid=true;car.parkUntil=this.time+14+this.random()*8;}}
       if(!car.parkingPaid||this.time<car.parkUntil)return;
       const p=point(entrance);car.parkingPhase='leaving';car.parkingPath=[...driveway(b,entrance,car.parkingSlot)].reverse();car.parkingPath.push([(p.x+.5)*B.tile,(p.y+.5)*B.tile]);car.parkingIndex=0;car.parkingDistance=0;

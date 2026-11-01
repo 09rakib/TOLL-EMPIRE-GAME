@@ -59,7 +59,7 @@ export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame
   function updateBuilding(){
     if($('#building-panel').hidden||buildingNode===null)return;
     const game=getGame(),b=game.buildingAt(buildingNode);if(!b){$('#building-panel').hidden=true;return;}
-    const spec=Object.values(BUILDINGS).find(s=>s.type===b.type),connected=game.buildingEntrance(b)!==null,level=b.level||1,cost=game.buildingUpgradeCost(b),district=districtFor(b);
+    const spec=BUILDINGS[b.kind]||Object.values(BUILDINGS).find(s=>s.type===b.type),connected=game.buildingEntrance(b)!==null,level=b.level||1,cost=game.buildingUpgradeCost(b),district=districtFor(b);
     $('#building-description').textContent=`${district?.name||'City outskirts'} · ${connected?'Road connection ready':'Road connection needed'}`;
     if(b.project){
       const project=PROJECTS[b.project],status=projectStatus(game,b);

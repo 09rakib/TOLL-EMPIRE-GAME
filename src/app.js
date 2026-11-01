@@ -9,6 +9,7 @@ import {roadName} from './traffic.js';
 import {setupCityUI} from './city-ui.js';
 import {traceTiles} from './brush.js';
 import {setupTutorial} from './tutorial.js';
+import {BUILDINGS} from './growth.js';
 import {PROJECTS} from './projects.js';
 import {drawUpgradeComparison} from './architecture.js';
 import {plotCells,plannedPlot} from './plots.js';
@@ -43,13 +44,13 @@ function chooseTool(next){
 }
 function closePanel(){selected=null;renderer.selected=null;$('#road-panel').hidden=true;}
 function openTrees(n,resume=null){
-  const cells=['park','office'].includes(resume)?plotCells(plannedPlot(n,resume,game.mode)):[n];
+  const cells=BUILDINGS[resume]?plotCells(plannedPlot(n,resume,game.mode)):[n];
   if(!cells.some(a=>game.trees.has(a)))return;if(tool)chooseTool(null);closePanel();closeSheets();treeNode=n;treeArea=cells;resumeAfterClear=resume;renderer.selected=n;$('#tree-panel').hidden=false;updateTrees();
 }
-function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const kind=resumeAfterClear,site=['park','office'].includes(kind),name=kind==='office'?'L-Office':'City Park',clearing=treeArea.reduce((sum,n)=>sum+game.treeRemovalCost(n),0),price=kind==='office'?B.officePrice:B.parkPrice,cost=clearing+(site?price:0),count=treeArea.reduce((sum,n)=>sum+game.treeCount(n),0);$('#tree-info').textContent=count+' trees · $'+clearing+' clearing'+(site?' + $'+price+' '+name+' · '+treeArea.length+' tiles':'');$('#tree-panel h2').textContent=site?'Build '+name:'Wooded plot';$('#tree-panel .tree-note').textContent=site?'This payment clears the full footprint and builds immediately. The office includes working parking.':'Clear these trees before placing roads or buildings. The land stays clear after saving.';$('#clear-plot').textContent=(site?'Clear & build '+(kind==='office'?'office':'park')+' · $':'Clear plot · $')+cost;$('#clear-plot').disabled=game.coins<cost;}
+function updateTrees(){if($('#tree-panel').hidden||treeNode===null)return;const kind=resumeAfterClear,site=!!BUILDINGS[kind],name=BUILDINGS[kind]?.name||'Building',clearing=treeArea.reduce((sum,n)=>sum+game.treeRemovalCost(n),0),price=BUILDINGS[kind]?.price||0,cost=clearing+(site?price:0),count=treeArea.reduce((sum,n)=>sum+game.treeCount(n),0);$('#tree-info').textContent=count+' trees · $'+clearing+' clearing'+(site?' + $'+price+' '+name+' · '+treeArea.length+' tiles':'');$('#tree-panel h2').textContent=site?'Build '+name:'Wooded plot';$('#tree-panel .tree-note').textContent=site?'This payment clears the full footprint and builds immediately. The office includes working parking.':'Clear these trees before placing roads or buildings. The land stays clear after saving.';$('#clear-plot').textContent=(site?'Clear & build '+name.toLowerCase()+' · $':'Clear plot · $')+cost;$('#clear-plot').disabled=game.coins<cost;}
 $('#close-trees').onclick=()=>{$('#tree-panel').hidden=true;renderer.selected=null;treeNode=null;};
-$('#clear-plot').onclick=()=>{const site=['park','office'].includes(resumeAfterClear),node=treeNode,error=site?game.buildBuilding(node,resumeAfterClear,{clearTrees:true}):game.clearTreeArea(treeArea);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;if(site){revealBuilding(node);return;}changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
-function revealBuilding(node){chooseTool(null);const b=game.buildingAt(node);if(b)renderer.focusBuilding(b);changed();toast(b?.type===2?'L-Office built · 3 building tiles + 1 working parking tile.':'City Park built · 16 tiles. Connect a city road for visitors.');}
+$('#clear-plot').onclick=()=>{const site=!!BUILDINGS[resumeAfterClear],node=treeNode,error=site?game.buildBuilding(node,resumeAfterClear,{clearTrees:true}):game.clearTreeArea(treeArea);if(error){toast(error);return;}const next=resumeAfterClear;treeNode=null;closeSheets();renderer.selected=null;if(site){revealBuilding(node);return;}changed();if(next)chooseTool(next);toast('Land cleared. Ready to build. Undo is available in Build menu.');};
+function revealBuilding(node){chooseTool(null);const b=game.buildingAt(node);if(b)renderer.focusBuilding(b);changed();toast((BUILDINGS[b?.kind]?.name||'Building')+' built. Tap to upgrade, paint or remove.');}
 function openPanel(n){
   if(!isRoad(game.tiles[n]))return;
   if(tool)chooseTool(null);closeSheets();selected=n;renderer.selected=n;$('#road-panel').hidden=false;
@@ -135,8 +136,8 @@ function build(n,quiet=false){
   if(tool==='toll'&&game.tolls.has(n)){openPanel(n);return;}
   if(tool==='clear-trees'&&game.trees.has(n)){openTrees(n,'clear-trees');return false;}
   const currentTool=tool,error=game.build(n,tool);
-  if(error){const wooded=['park','office'].includes(currentTool)?error.startsWith('Clear the trees'):game.trees.has(n)&&currentTool!=='demolish';if(wooded){if(!quiet)openTrees(n,currentTool);else toast('Clear these trees before building here. Tap them to see the cost.');}else if(!quiet)toast(error);return false;}
-  if(['park','office'].includes(currentTool)){revealBuilding(n);return true;}
+  if(error){const wooded=!!BUILDINGS[currentTool]?error.startsWith('Clear the trees'):game.trees.has(n)&&currentTool!=='demolish';if(wooded){if(!quiet)openTrees(n,currentTool);else toast('Clear these trees before building here. Tap them to see the cost.');}else if(!quiet)toast(error);return false;}
+  if(!!BUILDINGS[currentTool]){revealBuilding(n);return true;}
   changed();
   cityUI?.audio.play(game.settings.sound,'build');
   if(currentTool==='toll'){chooseTool(null);openPanel(n);toast('Open for business! Adjust the toll and watch drivers adapt.');}
@@ -167,7 +168,7 @@ canvas.addEventListener('pointermove',e=>{
   if(tool&&n>=0){
     const span=tool==='flyover'||tool==='bridge';
     const bent=tool==='flyover'&&bentFlyover;const plan=bent&&spanBend!==null?game.planBentFlyover(spanStart,spanBend,n):game.planSpan(spanStart??n,n,tool);
-    renderer.ghost={node:n,footprint:plannedPlot(n,tool,game.mode).footprint,valid:span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:!game.validate(n,tool)};
+    renderer.ghost={node:n,...plannedPlot(n,tool,game.mode),valid:span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:!game.validate(n,tool)};
     if(span&&spanStart!==null)renderer.spanPreview=bent&&spanBend===null?null:plan;
   }
   if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,p);

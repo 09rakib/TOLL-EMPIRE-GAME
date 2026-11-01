@@ -1,3 +1,4 @@
+import {plotWidth,plotHeight} from './plots.js';
 import {B} from './balance.js';
 import {id,point,isRoad} from './world.js';
 import {THEMES,DISTRICTS} from './campaign.js';
@@ -15,8 +16,8 @@ export class Renderer {
   }
   resize(){const r=this.canvas.getBoundingClientRect();this.width=r.width;this.height=r.height;this.dpr=this.game.settings.lowPower?1:Math.min(devicePixelRatio||1,2);this.canvas.width=r.width*this.dpr;this.canvas.height=r.height*this.dpr;this.clamp();}
   center(){this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera=this.game.mode==='planner'?{x:19.5*T,y:20.5*T,zoom:this.width<600?.8:.85}:{x:19*T,y:19*T,zoom:this.width<600?.65:.72};this.clamp();}
-  focusBuilding(b){const size=(b.footprint||1)*T;this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera.zoom=Math.max(B.zoomMin,Math.min(this.camera.zoom,(this.width-48)/size,(this.height-170)/size));this.camera.x=b.x*T+size/2;this.camera.y=b.y*T+size/2;this.selected=id(b.x,b.y);this.clamp();}
-  siteSprite(b){this.siteSprites??=new Map();const key=`${b.type}:${b.footprint}:${b.parkingCorner??2}:${b.level||1}:${b.paint||0}`;if(!this.siteSprites.has(key)){const sprite=document.createElement('canvas');sprite.width=(b.footprint||1)*T;sprite.height=sprite.width;drawPlannerBuilding(sprite.getContext('2d'),{...b,x:0,y:0});this.siteSprites.set(key,sprite);}return this.siteSprites.get(key);}
+  focusBuilding(b){const size=Math.max(plotWidth(b),plotHeight(b))*T;this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera.zoom=Math.max(B.zoomMin,Math.min(this.camera.zoom,(this.width-48)/size,(this.height-170)/size));this.camera.x=b.x*T+size/2;this.camera.y=b.y*T+plotHeight(b)*T/2;this.selected=id(b.x,b.y);this.clamp();}
+  siteSprite(b){this.siteSprites??=new Map();const key=`${b.kind}:${b.width}:${b.height}:${b.type}:${b.footprint}:${b.parkingCorner??2}:${b.level||1}:${b.paint||0}`;if(!this.siteSprites.has(key)){const sprite=document.createElement('canvas');sprite.width=plotWidth(b)*T;sprite.height=plotHeight(b)*T;drawPlannerBuilding(sprite.getContext('2d'),{...b,x:0,y:0});this.siteSprites.set(key,sprite);}return this.siteSprites.get(key);}
   clamp(){const c=this.camera;const hx=Math.min(B.size*T/2,this.width/2/c.zoom),hy=Math.min(B.size*T/2,this.height/2/c.zoom);c.x=Math.max(hx,Math.min(B.size*T-hx,c.x));c.y=Math.max(hy,Math.min(B.size*T-hy,c.y));}
   screenToWorld(x,y){return {x:(x-this.width/2)/this.camera.zoom+this.camera.x,y:(y-this.height/2)/this.camera.zoom+this.camera.y};}
   tileAt(x,y){const w=this.screenToWorld(x,y);if(w.x<0||w.y<0||w.x>=B.size*T||w.y>=B.size*T)return -1;return id(Math.floor(w.x/T),Math.floor(w.y/T));}
@@ -61,7 +62,7 @@ export class Renderer {
         c.fillStyle='#d3d8c0';c.beginPath();c.arc(px+T/2,py+T/2,15,0,7);c.fill();c.fillStyle='#87a66a';c.beginPath();c.arc(px+T/2,py+T/2,11,0,7);c.fill();this.tree(c,px+T/2,py+T/2,.55);
       }
     }
-    for(const b of [...this.game.buildings].sort((a,b)=>a.y-b.y))if((b.footprint||1)===1)this.building(c,b);
+    for(const b of [...this.game.buildings].sort((a,b)=>a.y-b.y))if(plotWidth(b)===1&&plotHeight(b)===1)this.building(c,b);
     // Street names are baked once with the neighborhood.
     this.dirty=false;
   }
@@ -109,7 +110,7 @@ export class Renderer {
     c.translate(this.width/2,this.height/2);c.scale(cam.zoom,cam.zoom);c.translate(-cam.x,-cam.y);c.drawImage(this.terrain,0,0);
     // Small park sprites draw directly into the visible frame, independently of
     // the large terrain cache used by the Android WebView.
-    for(const b of this.game.buildings)if((b.footprint||1)>1)c.drawImage(this.siteSprite(b),b.x*T,b.y*T,b.footprint*T,b.footprint*T);
+    for(const b of this.game.buildings)if(plotWidth(b)>1||plotHeight(b)>1)c.drawImage(this.siteSprite(b),b.x*T,b.y*T,plotWidth(b)*T,plotHeight(b)*T);
     this.viewLeft=cam.x-this.width/2/cam.zoom;this.viewRight=cam.x+this.width/2/cam.zoom;this.viewTop=cam.y-this.height/2/cam.zoom;this.viewBottom=cam.y+this.height/2/cam.zoom;
     if(this.game.settings.night){c.fillStyle='#18344966';c.fillRect(0,0,B.size*T,B.size*T);for(const b of this.game.buildings){c.fillStyle='#ffe7a782';c.fillRect(b.x*T+12,b.y*T+14,5,6);c.fillRect(b.x*T+25,b.y*T+14,5,6);}}
     if(this.districtView)for(const d of DISTRICTS){const [x,y,right,bottom]=d.bounds;c.strokeStyle='#f9f4dbb0';c.lineWidth=2;c.setLineDash([10,9]);c.strokeRect(x*T,y*T,(right-x+1)*T,(bottom-y+1)*T);c.setLineDash([]);c.fillStyle='#47664d';c.font='bold 13px Arial';c.textAlign='left';c.fillText(d.name,x*T+15,y*T+25);}
@@ -130,13 +131,13 @@ export class Renderer {
       c.fillStyle=w.color;c.beginPath();c.ellipse(0,0,3,3.6,0,0,7);c.fill();c.fillStyle='#e9c69b';c.beginPath();c.arc(2,0,2.3,0,7);c.fill();c.restore();
     }
     for(const effect of this.game.visitEffects){const p=point(effect.node),age=this.game.time-effect.time;c.globalAlpha=Math.max(0,1-age/2);const x=(p.x+.5)*T,y=p.y*T-18-age*14;rounded(c,x-20,y-12,40,19,7,'#fff8d9','#a5bd89');c.fillStyle='#426b45';c.font='bold 10px Arial';c.textAlign='center';c.fillText(`+${Math.floor(effect.amount)}`,x,y+1);c.globalAlpha=1;}
-    if(this.selected!==null){const b=this.game.buildingAt(this.selected),p=b||point(this.selected),size=(b?.footprint||1)*T;c.strokeStyle='#efbc49';c.lineWidth=3;c.strokeRect(p.x*T+2,p.y*T+2,size-4,size-4);}
-    if(this.ghost){const p=point(this.ghost.node),size=(this.ghost.footprint||1)*T;c.fillStyle=this.ghost.valid?'#548c6755':'#cd766a66';c.fillRect(p.x*T+2,p.y*T+2,size-4,size-4);c.strokeStyle=this.ghost.valid?'#edf5d8':'#f9dad2';c.lineWidth=2;c.strokeRect(p.x*T+2,p.y*T+2,size-4,size-4);if((this.ghost.footprint||1)>1){c.setLineDash([4,4]);for(let i=1;i<this.ghost.footprint;i++){c.beginPath();c.moveTo(p.x*T+i*T,p.y*T);c.lineTo(p.x*T+i*T,p.y*T+size);c.moveTo(p.x*T,p.y*T+i*T);c.lineTo(p.x*T+size,p.y*T+i*T);c.stroke();}c.setLineDash([]);}}
+    if(this.selected!==null){const b=this.game.buildingAt(this.selected),p=b||point(this.selected),size=plotWidth(b||{})*T;c.strokeStyle='#efbc49';c.lineWidth=3;c.strokeRect(p.x*T+2,p.y*T+2,size-4,plotHeight(b||{})*T-4);}
+    if(this.ghost){const p=point(this.ghost.node),size=plotWidth(this.ghost)*T,h=plotHeight(this.ghost)*T;c.fillStyle=this.ghost.valid?'#548c6755':'#cd766a66';c.fillRect(p.x*T+2,p.y*T+2,size-4,h-4);c.strokeStyle=this.ghost.valid?'#edf5d8':'#f9dad2';c.lineWidth=2;c.strokeRect(p.x*T+2,p.y*T+2,size-4,h-4);if((this.ghost.footprint||1)>1){c.setLineDash([4,4]);for(let i=1;i<this.ghost.footprint;i++){c.beginPath();c.moveTo(p.x*T+i*T,p.y*T);c.lineTo(p.x*T+i*T,p.y*T+size);c.moveTo(p.x*T,p.y*T+i*T);c.lineTo(p.x*T+size,p.y*T+i*T);c.stroke();}c.setLineDash([]);}}
     if(this.spanPreview?.nodes){c.fillStyle=this.spanPreview.error?'#cd766a88':'#548c6788';for(const n of this.spanPreview.nodes){const p=point(n);c.fillRect(p.x*T+3,p.y*T+3,T-6,T-6);}const p=point(this.spanPreview.nodes.at(-1));rounded(c,p.x*T-15,p.y*T-25,86,23,7,'#fff9eb');c.fillStyle='#345343';c.font='bold 11px Arial';c.textAlign='center';c.fillText(`${this.spanPreview.cost} coins`,p.x*T+28,p.y*T-9);}
     c.setTransform(this.dpr,0,0,this.dpr,0,0);
     // Soft cream vignette keeps the HUD legible without blocking the map.
     const fade=c.createLinearGradient(0,0,0,Math.min(this.height*.45,260));fade.addColorStop(0,'#e9eed2b8');fade.addColorStop(.65,'#e9eed230');fade.addColorStop(1,'#e9eed200');c.fillStyle=fade;c.fillRect(0,0,this.width,260);
     this.drawMini();
   }
-  drawMini(){const c=this.mini.getContext('2d'),w=this.mini.width,h=this.mini.height;c.drawImage(this.terrain,0,0,w,h);for(const site of this.game.buildings)if((site.footprint||1)>1)c.drawImage(this.siteSprite(site),site.x/B.size*w,site.y/B.size*h,site.footprint/B.size*w,site.footprint/B.size*h);for(const span of this.game.flyovers){c.strokeStyle='#f1c861';c.lineWidth=2;c.beginPath();for(let i=0;i<span.nodes.length;i++){const p=point(span.nodes[i]);if(i)c.lineTo((p.x+.5)/B.size*w,(p.y+.5)/B.size*h);else c.moveTo((p.x+.5)/B.size*w,(p.y+.5)/B.size*h);}c.stroke();}c.strokeStyle='#fff9e7';c.lineWidth=2;const cam=this.camera;c.strokeRect((cam.x-this.width/2/cam.zoom)/(B.size*T)*w,(cam.y-this.height/2/cam.zoom)/(B.size*T)*h,this.width/cam.zoom/(B.size*T)*w,this.height/cam.zoom/(B.size*T)*h);for(const [n]of this.game.tolls){const p=point(n);c.fillStyle='#f7bd38';c.beginPath();c.arc(p.x/B.size*w,p.y/B.size*h,3,0,7);c.fill();}}
+  drawMini(){const c=this.mini.getContext('2d'),w=this.mini.width,h=this.mini.height;c.drawImage(this.terrain,0,0,w,h);for(const site of this.game.buildings)if(plotWidth(site)>1||plotHeight(site)>1)c.drawImage(this.siteSprite(site),site.x/B.size*w,site.y/B.size*h,plotWidth(site)/B.size*w,plotHeight(site)/B.size*h);for(const span of this.game.flyovers){c.strokeStyle='#f1c861';c.lineWidth=2;c.beginPath();for(let i=0;i<span.nodes.length;i++){const p=point(span.nodes[i]);if(i)c.lineTo((p.x+.5)/B.size*w,(p.y+.5)/B.size*h);else c.moveTo((p.x+.5)/B.size*w,(p.y+.5)/B.size*h);}c.stroke();}c.strokeStyle='#fff9e7';c.lineWidth=2;const cam=this.camera;c.strokeRect((cam.x-this.width/2/cam.zoom)/(B.size*T)*w,(cam.y-this.height/2/cam.zoom)/(B.size*T)*h,this.width/cam.zoom/(B.size*T)*w,this.height/cam.zoom/(B.size*T)*h);for(const [n]of this.game.tolls){const p=point(n);c.fillStyle='#f7bd38';c.beginPath();c.arc(p.x/B.size*w,p.y/B.size*h,3,0,7);c.fill();}}
 }

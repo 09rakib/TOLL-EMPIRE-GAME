@@ -23,6 +23,10 @@ Build tasks copy current root `index.html`, `src/` and `public/` into generated 
 
 Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
 
+## New city-building additions
+
+Home + parking costs 220 coins and occupies a rectangular 2 × 1 site. Its two parking bays receive residents without charging a business fee. The complete property supports clearing, upgrades, paint, removal, undo and save recovery. Existing homes are preserved.
+
 ## v0.8.0 changes
 
 New offices use four tiles: an L-shaped building and working parking. Cars arrive, stop in one of two bays, pay and depart. Old compact offices remain intact to protect existing cities.
