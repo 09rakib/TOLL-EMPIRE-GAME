@@ -1,4 +1,4 @@
-# Toll Empire · v0.8.0: L-shaped offices and working parking
+# Toll Empire · v0.9.0: mayor city builder
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
@@ -21,7 +21,7 @@ On Windows use `gradlew.bat assembleDebug`. Set `JAVA_HOME` and `ANDROID_HOME` t
 
 Build tasks copy current root `index.html`, `src/` and `public/` into generated Android assets automatically, disabling the browser service worker inside that copy. The source tree remains shared. Backgrounding saves progress, and Android local storage survives force-stop/relaunch. The app supports Android 7.0/API 24 and newer with a current Android System WebView.
 
-Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
+Android validation: `assembleDebug` succeeds and `lintDebug` reports zero errors (four advisory warnings). Previous releases were installed and launched on a real Vivo V2405A with the ADB server tunnel absent. Version 0.9.0 is built and linted; device installation is intentionally deferred at the user’s request. Native system-bar spacing is handled by the host layout. Some Vivo devices require approval in Super Care when installing or updating an APK from outside the Vivo store.
 
 ## Continuous tools and L-shaped crossings
 
@@ -33,7 +33,7 @@ The river is straight again, with animated 2D wave strokes on visible water tile
 
 ## Mayor satisfaction
 
-The compact smile button opens the mayor report. Its score reflects actual road density, average toll prices, connected hospital distance from homes, police coverage, nearby parks and university access. Distance follows the road graph, so an isolated hospital does not count. Each factor has a visible score and improvement suggestion. This is computed from the city and does not overwrite player progress.
+The compact smile button opens the mayor report. Its score reflects actual road density, average toll prices, connected hospital distance from homes, police coverage, nearby parks and university access. Distance follows the road graph, so an isolated hospital does not count. Each factor has a visible score and improvement suggestion. Service upgrades extend effective coverage by three road steps per level. This is computed from the city and does not overwrite player progress.
 
 ## New campus buildings
 
@@ -123,7 +123,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-80 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts.
+97 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 

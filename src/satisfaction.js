@@ -1,7 +1,6 @@
-import {id} from './world.js';
 import {capacityFor} from './traffic.js';
 const clamp=n=>Math.max(0,Math.min(100,n));
-function distances(g,sites){const d=new Map(),q=[];for(const b of sites){const n=g.buildingEntrance(b);if(n!==null&&!d.has(n)){d.set(n,0);q.push(n);}}for(let i=0;i<q.length;i++)for(const n of g.graph.get(q[i])||[])if(!d.has(n)){d.set(n,d.get(q[i])+1);q.push(n);}return d;}
+function distances(g,sites){const d=new Map(),q=[];for(const b of sites){const n=g.buildingEntrance(b),seed=-3*((b.level||1)-1);if(n!==null&&(d.get(n)??Infinity)>seed){d.set(n,seed);q.push(n);}}for(let i=0;i<q.length;i++)for(const n of g.graph.get(q[i])||[]){const next=d.get(q[i])+1;if(next<(d.get(n)??Infinity)){d.set(n,next);q.push(n);}}return d;}
 export function citySatisfaction(g){
  const homes=g.buildings.filter(b=>b.managed&&b.type===0),population=homes.reduce((s,b)=>s+20*(b.level||1),0),services=kind=>g.buildings.filter(b=>b.managed&&(kind==='clinic'?b.type===4:b.kind===kind));
  const access=(kind,range)=>{const sites=services(kind),d=distances(g,sites);if(!homes.length)return 70;return homes.reduce((s,b)=>{const entrance=g.buildingEntrance(b),distance=entrance===null?Infinity:d.get(entrance)??Infinity;return s+clamp(100-distance*100/range)*(b.level||1)*20;},0)/population;};

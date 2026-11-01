@@ -1,3 +1,4 @@
+import {plotWidth,plotHeight} from './plots.js';
 import {drawCampus} from './campus-art.js';
 import {B} from './balance.js';
 import {drawCityPark} from './park-art.js';
@@ -38,6 +39,6 @@ export function drawToll(c,n,toll){
 }
 export function drawUpgradeComparison(canvas,item,toll=false){
   const c=canvas.getContext('2d'),level=item.level||1;c.clearRect(0,0,canvas.width,canvas.height);c.fillStyle='#f0f3e5';c.fillRect(0,0,canvas.width,canvas.height);
-  for(let side=0;side<2;side++){c.save();c.translate(side?180:35,0);const sample={...item,level:side?Math.min(5,level+1):level,x:0,y:1};if(toll&&side)sample.price=B.boothTollLimits[sample.level-1];if(toll)drawToll(c,B.size,sample);else if((item.footprint||1)>1){c.translate(-28,0);const scale=100/(item.footprint*B.tile);c.scale(scale,scale);sample.y=0;drawPlannerBuilding(c,sample);}else drawPlannerBuilding(c,sample);c.restore();}
+  for(let side=0;side<2;side++){c.save();c.translate(side?180:35,0);const sample={...item,level:side?Math.min(5,level+1):level,x:0,y:1};if(toll&&side)sample.price=B.boothTollLimits[sample.level-1];if(toll)drawToll(c,B.size,sample);else if(Math.max(plotWidth(item),plotHeight(item))>1){c.translate(-28,0);const scale=100/(Math.max(plotWidth(item),plotHeight(item))*B.tile);c.scale(scale,scale);sample.y=0;drawPlannerBuilding(c,sample);}else drawPlannerBuilding(c,sample);c.restore();}
   c.fillStyle='#5e7e60';c.font='11px Arial';c.textAlign='center';c.fillText(`Current · Lv ${level}`,63,133);c.fillText(level===5?'Maximum level':`After upgrade · Lv ${level+1}`,208,133);c.font='20px Arial';c.fillStyle='#a8b799';c.fillText('→',138,79);
 }
