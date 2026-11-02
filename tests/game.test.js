@@ -30,9 +30,9 @@ test('legacy city retains a usable free alternative to Willow Boulevard',()=>{
   assert.ok(findRoute(graph,start,end,.25).includes(booth));
   assert.ok(!findRoute(graph,start,end,.25,new Map([[booth,{price:30}]] )).includes(booth));
 });
-test('construction validates money, adjacency, legal terrain and multiple booths',()=>{
+test('construction validates money, legal terrain and multiple booths',()=>{
   const game=legacyGame(()=>.4);
-  assert.ok(game.build(id(0,0),'road'));assert.equal(game.coins,1000);
+  assert.ok(game.build(id(19,16),'road'));assert.equal(game.coins,1000);
   assert.equal(game.build(id(8,15),'road'),null);assert.equal(game.coins,975);
   assert.equal(game.build(id(19,16),'toll'),null);assert.equal(game.coins,825);
   assert.equal(game.build(id(20,16),'toll'),null);assert.equal(game.tolls.size,2);

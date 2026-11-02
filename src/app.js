@@ -120,8 +120,9 @@ function renderShop(){
 function renderSatisfaction(mood){$('#satisfaction-report').innerHTML='<strong>'+mood.score+'% · '+mood.label+'</strong><p>'+mood.population+' residents · You are the city mayor.</p>'+mood.factors.map(f=>'<div class="project-requirement"><span>'+f.name+'</span><b>'+f.score+'%</b></div><progress max="100" value="'+f.score+'"></progress><p>'+f.tip+'</p>').join('');}
 $('#satisfaction').onclick=()=>{chooseTool(null);closeSheets();closePanel();$('#satisfaction-panel').hidden=false;renderSatisfaction(citySatisfaction(game));};
 $('#close-satisfaction').onclick=()=>$('#satisfaction-panel').hidden=true;
+let moodCache=null;
 function updateUI(){
-  const mood=citySatisfaction(game);$('#satisfaction').textContent='☺ '+mood.score+'%';$('#satisfaction').setAttribute('aria-label','Mayor satisfaction '+mood.score+' percent. Open city report');if(!$('#satisfaction-panel').hidden)renderSatisfaction(mood);
+  const wallTime=performance.now();if(!moodCache||moodCache.game!==game||moodCache.revision!==game.revision||wallTime-moodCache.time>=1000)moodCache={game,revision:game.revision,time:wallTime,value:citySatisfaction(game)};const mood=moodCache.value;$('#satisfaction').textContent='☺ '+mood.score+'%';$('#satisfaction').setAttribute('aria-label','Mayor satisfaction '+mood.score+' percent. Open city report');if(!$('#satisfaction-panel').hidden)renderSatisfaction(mood);
   $('#coins').textContent=money(game.coins);$('#income').textContent=money(game.totalIncome);
   $('#traffic-count').textContent=`${game.cars.length} cars on the road`;
   $('#zoom-label').textContent=`${Math.round(renderer.camera.zoom*100)}%`;

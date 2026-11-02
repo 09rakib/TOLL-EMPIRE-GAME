@@ -20,9 +20,9 @@ export const officeMethods={
     car.age+=dt;const entrance=this.buildingEntrance(b);if(!live){car.parkingPaid=true;car.parkUntil=0;}
     if(car.parkingPhase==='waiting'){
       if(entrance===null||!this.graph.has(car.destination))return;
-      const occupied=new Set(this.cars.filter(c=>c!==car&&!c.done&&c.parkingOffice===car.parkingOffice&&Number.isInteger(c.parkingSlot)).map(c=>c.parkingSlot));
+      const occupied=this.parkingOccupancy(car.parkingOffice);
       const slot=Array.from({length:b.kind==='parking'?parkingCapacity(b):2},(_,i)=>i).find(s=>!occupied.has(s));if(slot===undefined)return;
-      car.parkingSlot=slot;car.parkingPhase='entering';car.parkingPath=[[car.worldX*B.tile,car.worldY*B.tile],...driveway(b,car.destination,slot)];car.parkingIndex=0;car.parkingDistance=0;
+      car.parkingSlot=slot;occupied.add(slot);if(this.parkingSlots&&!this.parkingSlots.has(car.parkingOffice))this.parkingSlots.set(car.parkingOffice,occupied);car.parkingPhase='entering';car.parkingPath=[[car.worldX*B.tile,car.worldY*B.tile],...driveway(b,car.destination,slot)];car.parkingIndex=0;car.parkingDistance=0;
     }
     if(car.parkingPhase==='parked'){
       if(entrance===null)return;
@@ -36,7 +36,7 @@ export const officeMethods={
     while(remaining>0&&car.parkingIndex<car.parkingPath.length-1){const a=car.parkingPath[car.parkingIndex],p=car.parkingPath[car.parkingIndex+1],distance=Math.hypot(p[0]-a[0],p[1]-a[1]);if(distance<.01){car.parkingIndex++;continue;}const step=Math.min(remaining,distance-car.parkingDistance);car.parkingDistance+=step;remaining-=step;const f=car.parkingDistance/distance;car.worldX=(a[0]+(p[0]-a[0])*f)/B.tile;car.worldY=(a[1]+(p[1]-a[1])*f)/B.tile;car.angle=Math.atan2(p[1]-a[1],p[0]-a[0]);if(car.parkingDistance>=distance-.001){car.parkingIndex++;car.parkingDistance=0;}}
     if(car.parkingIndex>=car.parkingPath.length-1){
       if(car.parkingPhase==='entering'){car.parkingPhase='parked';car.angle=-Math.PI/2;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}
-      else if(car.parkingPhase==='leaving'){const destination=this.graph.has(car.origin)?car.origin:this.endpoints.find(n=>this.graph.has(n)&&n!==entrance),route=this.route(entrance,destination,car.vot);car.parkingPhase=null;car.parkingSlot=null;car.targetBuilding=null;car.heading=null;car.blocked=false;car.exiting=false;if(!route||route.length<2){car.stranded=true;car.route=[entrance];car.index=0;car.progress=0;return;}car.route=route;car.index=0;car.progress=0;car.destination=destination;car.revision=this.revision;}
+      else if(car.parkingPhase==='leaving'){const destination=this.graph.has(car.origin)?car.origin:this.endpoints.find(n=>this.graph.has(n)&&n!==entrance),route=this.route(entrance,destination,car.vot);car.parkingPhase=null;this.parkingSlots?.get(car.parkingOffice)?.delete(car.parkingSlot);car.parkingSlot=null;car.targetBuilding=null;car.heading=null;car.blocked=false;car.exiting=false;if(!route||route.length<2){car.stranded=true;car.route=[entrance];car.index=0;car.progress=0;return;}car.route=route;car.index=0;car.progress=0;car.destination=destination;car.revision=this.revision;}
     }
   },
 };

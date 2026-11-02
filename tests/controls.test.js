@@ -27,7 +27,7 @@ test('grouped undo preserves income earned between pointer events',()=>{
   assert.equal(g.undoStack.length,1);g.undo();assert.equal(g.coins,before+70);assert.equal(g.tiles[id(18,16)],'road');assert.equal(g.tiles[id(19,16)],'road');
 });
 test('failed brush placement does not charge coins or create an undo action',()=>{
-  const g=legacyGame(()=>.4);g.beginStroke('road');assert.ok(g.build(id(0,0),'road'));assert.equal(g.endStroke().actions,0);assert.equal(g.undoStack.length,0);assert.equal(g.coins,1000);
+  const g=legacyGame(()=>.4);g.beginStroke('road');assert.ok(g.build(id(19,16),'road'));assert.equal(g.endStroke().actions,0);assert.equal(g.undoStack.length,0);assert.equal(g.coins,1000);
 });
 test('tutorial follows real actions, persists progress and finishes at the city board',()=>{
   const g=legacyGame(()=>.4);updateTutorial(g);assert.equal(g.campaign.tutorial.step,0);

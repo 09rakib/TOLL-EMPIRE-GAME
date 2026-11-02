@@ -80,7 +80,7 @@ export class Simulation {
     this.cars.push(car);
   }
   boothCapacity(n){const t=this.tolls.get(n);return (t?B.boothCapacities[t.level-1]:B.boothCapacities[0])*(1+this.upgrades.booths*B.boothBoostPerLevel)*(1+(this.projectEffects?.capacity||0));}
-  queueLength(n){let count=0;for(const c of this.cars)if(c.waitingNode===n)count++;return count;}
+  queueLength(n){if(this.queueCounts)return this.queueCounts.get(n)||0;let count=0;for(const c of this.cars)if(c.waitingNode===n)count++;return count;}
   speedAt(n){
     const elevated=n>=B.layerOffset,type=this.tiles[n],capacity=capacityFor(type,this.signals.has(n));
     const free=(elevated?B.flyoverSpeed:type==='mainRoad'?B.mainSpeed:1)*(1+this.upgrades.faster*B.fasterBoostPerLevel);
@@ -103,7 +103,7 @@ export class Simulation {
     const direction=roadHeading(current,next,car.heading??null);if(car.heading!==null&&car.heading!==undefined&&direction===(car.heading+2)%4){if(!this.uturns.has(current)){car.stranded=true;return;}this.startUTurn(car,current);this.updateUTurn(car,dt);return;}
     car.age+=dt;car.edgeAge=(car.edgeAge||0)+dt;
     if(car.waitingNode!==null&&car.waitingNode!==undefined){
-      if(!this.tolls.has(car.waitingNode)){car.waitingNode=null;}
+      if(!this.tolls.has(car.waitingNode)){this.setWaiting(car,null);}
       else if(this.time<car.serviceAt)return;
     }else{
       const previousProgress=car.progress;car.progress+=dt*B.carTilesPerSecond*this.speedAt(current);this.limitFollowing(car,previousProgress);
@@ -112,10 +112,10 @@ export class Simulation {
       if(this.tolls.has(next)&&!this.warming){
         const ready=Math.max(this.time,this.serviceNext.get(next)||0);
         this.serviceNext.set(next,ready+60/this.boothCapacity(next));
-        if(ready>this.time){car.waitingNode=next;car.serviceAt=ready;car.progress=.99;return;}
+        if(ready>this.time){this.setWaiting(car,next);car.serviceAt=ready;car.progress=.99;return;}
       }
     }
-    car.waitingNode=null;car.heading=roadHeading(current,next,car.heading??null);car.progress=Math.max(0,car.progress-1);car.index++;
+    this.setWaiting(car,null);car.heading=roadHeading(current,next,car.heading??null);car.progress=Math.max(0,car.progress-1);car.index++;
     const node=car.route[car.index];
     if(!this.warming)this.tracker.passage(this.time,node,car.edgeAge*B.tileTravelTime*B.carTilesPerSecond);car.edgeAge=0;
     const booth=this.tolls.get(node);
@@ -128,7 +128,7 @@ export class Simulation {
   update(dt){
     if(this.paused)return;
     this.time+=dt;this.spawnClock+=dt;this.replanClock+=dt;
-    this.density.clear();for(const c of this.cars){if(c.parkingPhase&&c.parkingPhase!=='waiting')continue;const n=c.waitingNode??c.route[c.index];this.density.set(n,(this.density.get(n)||0)+1);}
+    this.queueCounts??=new Map();this.queueCounts.clear();this.density.clear();for(const c of this.cars){if(c.waitingNode!==null&&c.waitingNode!==undefined)this.queueCounts.set(c.waitingNode,(this.queueCounts.get(c.waitingNode)||0)+1);if(c.parkingPhase&&c.parkingPhase!=='waiting')continue;const n=c.waitingNode??c.route[c.index];this.density.set(n,(this.density.get(n)||0)+1);}
     const event=this.campaign.event?.status==='active'?this.eventSpec():null;
     const interval=this.mode==='planner'?this.plannerInterval()/(event?.demand||1):B.spawnInterval/((1+this.upgrades.traffic*B.trafficBoostPerLevel)*this.demandBonus*POLICIES[this.settings.policy].demand*(event?.demand||1));
     if(this.spawnClock>=interval){this.spawnClock=Math.min(this.spawnClock,interval);if(this.mode!=='planner'||this.cars.length<this.trafficBudget()){this.spawnClock-=interval;this.spawn();}}
@@ -144,6 +144,7 @@ export class Simulation {
   syncCarPosition(car){
     if(car.parkingPhase||car.turn||car.stranded||car.blocked)return;
     const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],a=point(from),b=point(to);let dx=b.x-a.x,dy=b.y-a.y,progress=car.progress;
+    if(from!==to&&a.x===b.x&&a.y===b.y){const dir=roadHeading(from,car.route[car.index+2]??from,car.heading??0),angle=(dir??0)*Math.PI/2;car.worldX=a.x+.5-Math.sin(angle)*9/B.tile;car.worldY=a.y+.5+Math.cos(angle)*9/B.tile;car.angle=angle;return;}
     if(car.heading!==undefined&&car.heading!==null&&roadHeading(from,to,car.heading)===(car.heading+2)%4&&this.uturns.has(from)){const angle=car.heading*Math.PI/2;car.worldX=a.x+.5-Math.sin(angle)*9/B.tile;car.worldY=a.y+.5+Math.cos(angle)*9/B.tile;car.angle=angle;return;}
     if(this.mode==='planner'&&car.index===car.route.length-1){const previous=point(car.route[Math.max(0,car.index-1)]);dx=a.x-previous.x;dy=a.y-previous.y;if(!dx&&!dy){dx=Math.cos(car.angle||0);dy=Math.sin(car.angle||0);}progress*=.9;}
     car.worldX=a.x+.5+dx*progress-dy*9/B.tile;car.worldY=a.y+.5+dy*progress+dx*9/B.tile;car.angle=Math.atan2(dy,dx);
@@ -233,10 +234,8 @@ export class Simulation {
       if(type==='roundabout'||this.signals.has(n))return 'This intersection is already managed.';
     }else if(tool==='main'){
       if(type!=='grass'&&type!=='road')return 'Use empty grass or upgrade a local road.';
-      if(type==='grass'&&!this.neighbors(n).some(a=>isRoad(this.tiles[a])))return 'Connect your road to the existing network.';
     }else if(tool==='road'){
-      if(type!=='grass')return 'Build on empty grass, next to a road.';
-      if(!this.neighbors(n).some(a=>isRoad(this.tiles[a])))return 'Connect your new road to the existing network.';
+      if(type!=='grass')return 'Build on empty, cleared grass.';
     }else return 'Choose a construction tool.';
     const cost=this.buildCost(tool);if(this.coins<cost)return `You need ${cost} coins for this construction.`;
     return null;
