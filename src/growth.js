@@ -38,7 +38,7 @@ export const growthMethods={
     const clear=!!options.clearTrees;
     if(!clear&&cells.some(a=>this.trees.has(a)))return 'Clear the trees on this plot before placing a building.';
     if(plot.footprint!==4&&kind!=='park'&&!plotPerimeter(plot).some(a=>this.cityConnected.has(a)))return 'Connect this site to the city road network first.';
-    if(this.flyovers.some(s=>s.nodes.some(a=>cells.includes(a))))return 'Keep the flyover corridor clear.';
+    if(this.flyovers.some(s=>[...s.nodes,...(s.rampClearance||[])].some(a=>cells.includes(a))))return 'Keep the flyover corridor clear.';
     const price=BUILDINGS[kind].price+(clear?cells.reduce((sum,a)=>sum+this.treeRemovalCost(a),0):0);
     if(this.coins<price)return `You need ${price} coins for this building${clear?' and site clearing':''}.`;
     return null;

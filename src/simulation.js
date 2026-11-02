@@ -1,3 +1,4 @@
+import {prepareSideRamps} from './flyover-layout.js';
 import {drivingMethods} from './driving.js';
 import {B} from './balance.js';
 import {createCity,graphFrom,id,isRoad,point} from './world.js';
@@ -29,10 +30,10 @@ export class Simulation {
     this.walkers=[];this.walkClock=0;
     this.tolls=new Map((saved?.tolls||[]).map(([n,t])=>[n,{...t,level:t.level||1}]));
     if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
-    this.flyovers=structuredClone(saved?.flyovers||[]);this.signals=new Set(saved?.signals||[]);
+    this.flyovers=structuredClone(saved?.flyovers||[]);for(const span of this.flyovers)prepareSideRamps(span,this.tiles,this.trees,new Set(this.flyovers.filter(s=>s!==span).flatMap(s=>[...s.nodes,...(s.rampClearance||[])])));this.signals=new Set(saved?.signals||[]);
     this.uturns=new Set(saved?.uturns||[]);
     this.bridges=structuredClone(saved?.bridges||[]);this.upgrades={faster:0,booths:0,traffic:0,repair:0,offline:0,...saved?.upgrades};
-    this.graph=graphFrom(this.tiles,this.flyovers);
+    this.rampNodes=new Set(this.flyovers.flatMap(s=>[s.nodes[0]+B.layerOffset,s.nodes.at(-1)+B.layerOffset]));this.graph=graphFrom(this.tiles,this.flyovers);
     this.walkTopology=0;this.walkTopologySignature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');
     this.random=random;this.cars=[];this.pool=[];this.earned=saved?.earned||0;this.served=saved?.served||0;
     this.campaign=createCampaign(saved?.campaign,this.earned);this.settings=createSettings(saved?.settings);
@@ -73,7 +74,7 @@ export class Simulation {
     if(a===b)return;
     const vot=valueOfTime(this.random()),route=this.route(a,b,vot);
     if(!route||route.length<2)return;
-    if(this.cars.some(c=>c.route[c.index]===a&&c.progress<.8))return;
+    if(this.cars.some(c=>this.trafficNode(c.route[c.index])===a&&this.carLaneProgress(c)<.8))return;
     const car=this.pool.pop()||{};
     Object.assign(car,{route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination:b,revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,heading:null,turn:null,stranded:false,blocked:false,exiting:false});
     this.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;
@@ -161,7 +162,7 @@ export class Simulation {
     if(this.stroke){this.stroke.entry=before;this.stroke.actions=1;}
   }
   rebuild(){
-    this.graph=graphFrom(this.tiles,this.flyovers);this.revision++;
+    this.rampNodes=new Set(this.flyovers.flatMap(s=>[s.nodes[0]+B.layerOffset,s.nodes.at(-1)+B.layerOffset]));this.graph=graphFrom(this.tiles,this.flyovers);this.revision++;
     const signature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');if(signature!==this.walkTopologySignature){this.walkTopology++;this.walkTopologySignature=signature;}
     this.refreshDevelopment();
     for(const n of this.serviceNext.keys())if(!this.tolls.has(n))this.serviceNext.delete(n);
@@ -216,9 +217,10 @@ export class Simulation {
     if(BUILDINGS[tool])return this.validateBuilding(n,tool);
     if(!Number.isInteger(n)||n<0||n>=this.tiles.length)return 'Choose a tile inside the city.';
     const type=this.tiles[n];
+    if(['road','main'].includes(tool)&&this.flyovers.some(s=>(s.rampClearance||[]).includes(n)))return 'Keep the flyover side-ramp space clear.';
     if(tool==='demolish'){
       if(type==='building')return null;
-      if(this.flyovers.some(s=>s.nodes.includes(n))||this.bridges.some(s=>s.nodes.includes(n)))return null;
+      if(this.flyovers.some(s=>s.nodes.includes(n)||(s.rampClearance||[]).includes(n))||this.bridges.some(s=>s.nodes.includes(n)))return null;
       if(!isRoad(type))return 'Select a road, booth, signal or structure to remove.';
       if(type==='bridge')return 'The starter river bridge cannot be demolished.';
       if(this.endpoints.includes(n))return 'Keep the city entrance connected.';
@@ -265,7 +267,7 @@ export class Simulation {
       if(!isRoad(this.tiles[end]))return {error:'The second ramp must end on an existing road.'};
       if(nodes.some(n=>this.tiles[n]==='river'||this.tiles[n]==='building'||this.tiles[n]==='bridge'))return {error:'Flyovers cross grass and ground roads, not water or buildings.'};
       if(nodes.some(n=>this.trees.has(n)))return {error:'Clear the trees along the flyover corridor first.'};
-      if(this.flyovers.some(s=>s.nodes.some(n=>nodes.includes(n))))return {error:'This span overlaps an existing flyover.'};
+      if(this.flyovers.some(s=>[...s.nodes,...(s.rampClearance||[])].some(n=>nodes.includes(n))))return {error:'This span overlaps an existing flyover.'};
     }else{
       if(this.trees.has(end))return {error:'Clear the trees at the bridge landing first.'};
       if(this.tiles[end]!=='grass'&&!isRoad(this.tiles[end]))return {error:'End your bridge on clear land or a road on the other bank.'};
@@ -277,7 +279,7 @@ export class Simulation {
   buildSpan(start,end,tool){
     const plan=this.planSpan(start,end,tool);if(plan.error)return plan.error;
     const before=this.snapshot();this.coins-=plan.cost;
-    if(tool==='flyover')this.flyovers.push({nodes:plan.nodes,cost:plan.cost});
+    if(tool==='flyover')this.flyovers.push(prepareSideRamps({nodes:plan.nodes,cost:plan.cost},this.tiles,this.trees,new Set(this.flyovers.flatMap(s=>[...s.nodes,...(s.rampClearance||[])]))));
     else{for(const n of plan.nodes)this.tiles[n]=this.tiles[n]==='river'?'bridge':isRoad(this.tiles[n])?this.tiles[n]:'road';this.bridges.push({nodes:plan.nodes,cost:plan.cost});}
     this.record(before);this.rebuild();return null;
   }
@@ -288,7 +290,7 @@ export class Simulation {
     if(!isRoad(this.tiles[start])||!isRoad(this.tiles[end]))return {error:'Both ramps must connect to existing roads.'};
     for(const [p,q]of [[a,b],[b,c]]){const len=Math.abs(q.x-p.x)+Math.abs(q.y-p.y),dx=Math.sign(q.x-p.x),dy=Math.sign(q.y-p.y);for(let i=nodes.length?1:0;i<=len;i++)nodes.push(id(p.x+dx*i,p.y+dy*i));}
     if(nodes.length-1>B.maxSpan*2||new Set(nodes).size!==nodes.length)return {error:'Keep each flyover under 28 tiles without doubling back.'};
-    if(nodes.some(n=>!['grass','road','mainRoad','roundabout'].includes(this.tiles[n])||this.trees.has(n)||this.flyovers.some(s=>s.nodes.includes(n))))return {error:'Clear the corridor first. Flyovers cannot overlap trees, buildings, water or another flyover.'};
+    if(nodes.some(n=>!['grass','road','mainRoad','roundabout'].includes(this.tiles[n])||this.trees.has(n)||this.flyovers.some(s=>(s.nodes.includes(n)||(s.rampClearance||[]).includes(n)))))return {error:'Clear the corridor first. Flyovers cannot overlap trees, buildings, water or another flyover.'};
     const cost=nodes.length*B.flyoverPrice;return {nodes,cost,bent:true,error:this.coins<cost?`This flyover costs ${cost} coins.`:null};
   }
   planBentBridge(start,bend,end){
@@ -301,11 +303,11 @@ export class Simulation {
     const cost=(nodes.length-2)*B.bridgePrice+(this.tiles[end]==='grass'?B.roadPrice:0);return {nodes,cost,bent:true,error:this.coins<cost?'This bridge costs '+cost+' coins.':null};
   }
   buildBentBridge(start,bend,end){const plan=this.planBentBridge(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;for(const n of plan.nodes)this.tiles[n]=this.tiles[n]==='river'?'bridge':isRoad(this.tiles[n])?this.tiles[n]:'road';this.bridges.push({nodes:plan.nodes,cost:plan.cost,bent:true});this.record(before);this.rebuild();return null;}
-  buildBentFlyover(start,bend,end){const plan=this.planBentFlyover(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;this.flyovers.push({nodes:plan.nodes,cost:plan.cost,bent:true});this.record(before);this.rebuild();return null;}
+  buildBentFlyover(start,bend,end){const plan=this.planBentFlyover(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;this.flyovers.push(prepareSideRamps({nodes:plan.nodes,cost:plan.cost,bent:true},this.tiles,this.trees,new Set(this.flyovers.flatMap(s=>[...s.nodes,...(s.rampClearance||[])]))));this.record(before);this.rebuild();return null;}
   demolish(n){
     const error=this.validate(n,'demolish');if(error)return error;
     const before=this.snapshot();let value=0;
-    const fly=this.flyovers.find(s=>s.nodes.includes(n)),bridge=this.bridges.find(s=>s.nodes.includes(n));
+    const fly=this.flyovers.find(s=>s.nodes.includes(n)||(s.rampClearance||[]).includes(n)),bridge=this.bridges.find(s=>s.nodes.includes(n));
     if(this.tiles[n]==='building'){const b=this.buildingAt(n);value=b?.investment||0;if(b){for(const cell of plotCells(b))this.tiles[cell]='grass';this.buildings=this.buildings.filter(item=>item!==b);}}
     else if(fly){value=fly.cost;this.flyovers=this.flyovers.filter(s=>s!==fly);}
     else if(bridge){value=bridge.cost;for(const a of bridge.nodes.slice(1,-1)){this.tiles[a]='river';this.tolls.delete(a);this.signals.delete(a);this.uturns.delete(a);}this.bridges=this.bridges.filter(s=>s!==bridge);}

@@ -13,7 +13,7 @@ export const catalog=[
   {id:'park',name:'City Park',icon:'tree',category:'city',cost:B.parkPrice,unit:'4 × 4 · 16 tiles',hint:'A landscaped park with pond, fountain, sports and play areas. Place anywhere on clear land; connect a road for walking visitors.'},
   {id:'road',name:'Local road',icon:'road',category:'roads',cost:B.roadPrice,unit:'/ tile',hint:'Two lanes. Build anywhere on cleared grass, including across the river; connect the network later.'},
   {id:'main',name:'Main road',icon:'road',category:'roads',cost:B.mainPrice,unit:'/ tile',hint:'Four lanes, twice the capacity. Build on disconnected clear land or upgrade local roads.'},
-  {id:'flyover',name:'Flyover',icon:'flyover',category:'roads',cost:B.flyoverPrice,unit:'/ tile',hint:'Tap two roads for a straight or automatic L-shaped span. Add bend selects your own corner. Only ramps connect to ground.'},
+  {id:'flyover',name:'Flyover',icon:'flyover',category:'roads',cost:B.flyoverPrice,unit:'/ tile',hint:'Tap two roads for a straight or automatic L-shaped span. Add bend selects your own corner. Clear side space adds curved entry/exit ramps. Only ramp ends connect to ground.'},
   {id:'bridge',name:'River bridge',icon:'bridge',category:'roads',cost:B.bridgePrice,unit:'/ water tile',hint:'Tap a bank road then the opposite bank. Straight and L-shaped crossings supported; Add bend chooses the water corner.'},
   {id:'toll',name:'Toll booth',icon:'toll',category:'traffic',cost:B.tollPrice,unit:'',hint:'Collect from passing cars. Up to 12 booths; 5 levels each.'},
   {id:'signal',name:'Traffic signal',icon:'signal',category:'traffic',cost:B.signalPrice,unit:'',hint:'Controls a 3- or 4-way intersection with alternating lights.'},

@@ -34,6 +34,7 @@ export function validateSave(data){
   const projects=data.buildings.filter(b=>b.project).map(b=>b.project);if(new Set(projects).size!==projects.length)return false;
   if(!Array.isArray(data.tolls)||data.tolls.some(entry=>!Array.isArray(entry)||!node(entry[0])||!entry[1]||!Number.isInteger(entry[1].price)||entry[1].price<0||entry[1].price>(data.worldMode==='planner'?B.boothTollLimits[entry[1].level-1]:B.maxToll)||!Number.isInteger(entry[1].level)||entry[1].level<1||entry[1].level>5))return false;
   for(const key of ['flyovers','bridges'])if(!Array.isArray(data[key])||data[key].some(s=>!Array.isArray(s.nodes)||s.nodes.length<3||s.nodes.some(n=>!node(n))||!Number.isFinite(s.cost)||s.cost<0))return false;
+  if(data.flyovers.some(s=>s.rampSides!==undefined&&(!Array.isArray(s.rampSides)||s.rampSides.length!==2||s.rampSides.some(v=>![-1,0,1].includes(v)))||s.rampClearance!==undefined&&(!Array.isArray(s.rampClearance)||s.rampClearance.some(n=>!node(n)))))return false;
   if(!Array.isArray(data.signals)||data.signals.some(n=>!node(n)))return false;
   if(!data.upgrades||Object.values(data.upgrades).some(n=>!Number.isInteger(n)||n<0||n>B.upgradeMaxLevel))return false;
   if(!data.campaign||!Number.isFinite(data.campaign.xp)||data.campaign.xp<0||!Array.isArray(data.campaign.contracts)||!Number.isFinite(data.campaign.pendingOffline)||data.campaign.pendingOffline<0)return false;
