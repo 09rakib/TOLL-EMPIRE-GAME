@@ -1,6 +1,12 @@
-# Toll Empire · v0.10.3: visible underpasses and curved side ramps
+# Toll Empire · v0.10.4: explicit underpass vehicle visibility
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
+
+## v0.10.4 browser underpass visibility regression
+
+Deck transparency alone did not preserve vehicle visibility. In an isometric view the elevated surface also overlaps cars on a neighbouring road, outside the span’s logical ground tiles. Rendering now tests projected deck polygons against vehicle bounds, draws the normal scene, and then explicitly repaints underpass road vehicles at full body opacity. Elevated vehicles are restored above that cutaway pass. Detection includes landing vehicles and every visible deck, while cars visiting inside a building are excluded. The visible-deck list is cached so traffic does not rescan all static scenery.
+
+`/scripts/underpass-pixel-test.html` sweeps 18 fixed car positions on the underpass and adjacent road. It checks the actual body-colour pixels and vehicle identity; all 18 pass, including 9 adjacent-road cutaways. `?baseline` suppresses the new visibility redraw and reproduces 9 colour/occlusion failures. This checks the rendered result, unlike the previous identity-only route tests. Existing saves and traffic rules are unchanged. The dense 3× development-browser stress run retained fixed 1.5 DPR and measured 60 rAF FPS; this remains a browser result, not a phone guarantee.
 
 ## v0.10.3 side ramps and underpass visibility
 
@@ -178,7 +184,7 @@ npm run check
 node scripts/benchmark.mjs
 ```
 
-120 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
+122 tests cover empty-city initialization, increased real traffic from homes, arrival-based business receipts, admission capacity, road disconnection, buses, visually distinct building tiers, upgrade effects, toll bonuses, save isolation and visitor ledger preservation through undo. Existing traffic, routing, bridges, flyovers, signals, queues, contracts, districts, events, legacy landmarks and storage tests remain. Syntax checks cover all application scripts. Version 0.9.0 also has an isolated Chromium smoke checks of the served and offline Canvas app: new building-menu entries, parking tool selection, mayor report, and HUD/objective spacing at a mobile-width viewport. Visual captures are `city-campus-mobile.png` and `mayor-report-mobile.png`.
 
 The benchmark runs a deterministic 20-minute developed Planner city and verifies continuing trips, toll receipts and business arrivals. It measures simulation CPU time, not Android rendering frame rate. Desktop and 390×844 portrait browser checks cover placing buildings, buying an upgrade, before/after previews and actual hospital receipts.
 
