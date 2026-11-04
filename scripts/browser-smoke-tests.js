@@ -12,7 +12,11 @@ export async function run(){
  assert(cityOverlay(g,'connections').markers.length===1,'isolated campus reports connection problem');
  document.querySelector('[data-tool="home"]').click();
  const canvas=document.querySelector('#map'),rect=canvas.getBoundingClientRect();canvas.dispatchEvent(new PointerEvent('pointermove',{clientX:rect.left+rect.width/2,clientY:rect.top+rect.height/2,pointerId:1,bubbles:true}));
- assert(/total/.test(document.querySelector('#construction-quote').textContent),'pointer preview shows complete building quote');
+ assert(/total/.test(document.querySelector('#construction-quote').textContent),'complete construction quote remains available to assistive technology');
+ const guide=document.querySelector('#build-guide'),bar=document.querySelector('.buildbar').getBoundingClientRect(),done=document.querySelector('#cancel-build').getBoundingClientRect();
+ assert(getComputedStyle(guide).display==='contents'&&guide.getClientRects().length===0,'construction popup has no box over the map');
+ assert(done.top>=bar.top&&done.bottom<=bar.bottom&&done.height>=44,'Done stays inside the bottom toolbar with a usable touch target');
+ assert(document.elementFromPoint(rect.left+rect.width/2,bar.top-40)===canvas,'map above the toolbar receives touches during construction');
  document.querySelector('#cancel-build').click();
  document.querySelector('#city-board').click();document.querySelector('[data-board-tab="neighborhoods"]').click();
  assert(document.querySelectorAll('[data-neighborhood]').length===5,'all five district goal cards render');

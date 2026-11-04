@@ -56,6 +56,15 @@ try{
  if(errors.length)throw Error(errors.join('\n'));
  const shot=await send('Page.captureScreenshot',{format:'png'});const screenshot=path.join(profile,'city-smoke.png');await writeFile(screenshot,Buffer.from(shot.data,'base64'));
  console.log(JSON.stringify({passed:result.result.value,viewport:'390x844',screenshot,errors},null,2));
+ if(process.argv.includes('--construction-review')){
+  for(const [width,height,tool]of [[390,844,'road'],[844,390,'flyover']]){
+   await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await delay(100);
+   await evaluate(`(()=>{const quick=document.querySelector('[data-tool="${tool}"]');if(quick)quick.click();else{document.querySelector('#more-tools').click();document.querySelector('[data-category="roads"]').click();document.querySelector('[data-pick-tool="${tool}"]').click();}})()`);
+   if(!await evaluate("(()=>{const bar=document.querySelector('.buildbar').getBoundingClientRect();return ['cancel-build','flyover-bend'].every(id=>{const b=document.getElementById(id);if(b.hidden)return true;const r=b.getBoundingClientRect();return r.left>=bar.left&&r.right<=bar.right&&r.top>=bar.top&&r.bottom<=bar.bottom&&r.height>=44;})&&document.documentElement.scrollWidth<=innerWidth;})()"))throw Error('Construction controls overflow '+width+'x'+height);
+   const capture=await send('Page.captureScreenshot',{format:'png'}),output=path.join(profile,`construction-${width}x${height}.png`);await writeFile(output,Buffer.from(capture.data,'base64'));console.log(JSON.stringify({constructionReview:output}));
+   await evaluate("document.querySelector('#cancel-build').click()");
+  }
+ }
  if(process.argv.includes('--civic-review')||process.argv.includes('--toll-review')){
   const review=process.argv.includes('--toll-review')?'toll':'civic',width=review==='toll'?1100:1080,height=review==='toll'?640:1255;
   await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});

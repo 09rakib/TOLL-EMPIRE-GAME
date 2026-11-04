@@ -52,7 +52,7 @@ function chooseTool(next){
   $('#map').style.cursor=tool?'crosshair':'grab';$('#flyover-bend').hidden=!['flyover','bridge'].includes(tool);$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';
   updateBuildQuote();tutorial?.update();
 }
-const quoteLabel=document.createElement('small');quoteLabel.id='construction-quote';quoteLabel.setAttribute('role','status');$('#build-guide').append(quoteLabel);
+const quoteLabel=document.createElement('small');quoteLabel.id='construction-quote';quoteLabel.className='construction-status';quoteLabel.setAttribute('role','status');$('#build-guide').append(quoteLabel);
 function updateBuildQuote(n=renderer.ghost?.node){if(!tool){quoteLabel.textContent='';return;}if(n===undefined){quoteLabel.textContent='Touch or hover over a tile for the complete quote.';return;}if(tool==='move-building'){const error=game.validateMove(movingNode,n);quoteLabel.textContent='$50 move | '+(error||'Ready: tap to move the whole property');quoteLabel.dataset.state=error?'blocked':'ready';return;}const q=constructionQuote(game,n,tool,{start:spanStart,bend:spanBend,bent:bentFlyover});quoteLabel.textContent=q.text;quoteLabel.dataset.state=q.valid?'ready':'blocked';}
 function closePanel(){selected=null;renderer.selected=null;$('#road-panel').hidden=true;}
 function openTrees(n,resume=null){

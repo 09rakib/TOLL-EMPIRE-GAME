@@ -19,7 +19,7 @@ Gameplay is dependency-free JavaScript and Canvas. `src/` is the game source; `i
 
 ## Current project state
 
-- Latest project version: **v0.11.5** (Android version code 1105).
+- Latest project version: **v0.11.6** (Android version code 1106).
 - All six city improvement phases were implemented and pushed independently on `codex/isometric-2-5d`. Consult `git log` for exact commits and verify branch/status before continuing. Detailed behavior and checks are in `DEVELOPMENT.md`.
 - The current visual direction is an isometric 2.5D city. Preserve the established visual style and mobile layout when extending it.
 - Performance work reuses car and walker render entries, interpolates pedestrians and camera movement, avoids redundant HUD text writes, defers/coalesces autosaves while keeping lifecycle saves immediate, and batches road/tree brush graph rebuilds. Whole-stroke undo preserves income earned during construction.
@@ -126,3 +126,8 @@ src/offices.js now selects a complete route to a reachable city gate while the v
 Repro command: node scripts/residential-flow.mjs --minutes=30. Same 16 adjacent-home fixture with --legacy-return reproduces 29 stationary vehicles and zero trips in final ten minutes (intentional nonzero exit). Fixed: zero stationary/stranded cars, 772 total trips, 272 final-ten-minute trips, 248 business visitors, 4,627 earned coins. General 60-minute pressure fixture also passes with no prolonged road stops. Synthetic fixtures, not a phone performance claim.
 
 Validation: 156 tests, 52 syntax checks, 55 source-browser checks, 54 exact APK-asset checks. v0.11.5 code 1105 APK built/linted (zero errors, three advisory warnings), with 52 bundled source/style/HTML files matching root. Ignored local APK: Toll-Empire-v0.11.5-Android.apk. No phone installation or phone testing.
+
+## v0.11.6 no construction popup over the map
+Owner requested removal of the dark bottom construction popup because it blocked selection. build-guide now lives inside the bottom toolbar using display:contents, with Done/Add bend as toolbar buttons. Instructions/quotes use a visually hidden, non-interactive construction-status class and remain accessible to screen readers. Do not restore a map-covering construction box. Prices/placement validation and all saves remain intact.
+
+Validation: 156 tests, 52 syntax checks, 58 source-browser checks and 57 exact bundled-asset checks. Verified guide has no box, the map above toolbar receives touches, Done is in toolbar, and portrait/landscape controls fit at 390x844 and 844x390. Screenshot command: node scripts/browser-smoke.mjs --construction-review. v0.11.6 code 1106 APK built/linted (zero errors, three advisory warnings); 52 APK source/style/HTML files match root. Ignored artifact: Toll-Empire-v0.11.6-Android.apk. No phone install or phone testing.

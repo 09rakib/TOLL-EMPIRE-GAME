@@ -1,7 +1,13 @@
-# Toll Empire · v0.11.5: residential traffic flow
+# Toll Empire · v0.11.6: unobstructed construction
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
+
+## v0.11.6 remove the construction popup
+
+Removed the dark construction popup above the toolbar. Done and Add bend now sit inside the bottom toolbar, so the map above it receives touches. Construction status remains available to screen readers; placement previews, build-menu prices and validation messages remain. Saves and gameplay rules are unchanged.
+
+Checked at 390x844 portrait and 844x390 landscape with actual map hit testing and toolbar bounds. Validation: 156 tests, 52 syntax checks, 58 source-browser checks and 57 exact APK-asset checks. Android v0.11.6 / code 1106 built/linted (zero errors, three advisory warnings); 52 APK source/style/HTML files match root with the intentional service-worker-registration removal. Local artifact: `Toll-Empire-v0.11.6-Android.apk` (ignored by Git). No phone installation or on-device testing.
 
 ## v0.11.5 residential deadlock fix
 
