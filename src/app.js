@@ -124,7 +124,7 @@ function renderShop(){
   }).join('');hydrateIcons();
   for(const b of document.querySelectorAll('[data-upgrade]'))b.onclick=()=>{const type=b.dataset.upgrade,error=game.buyUpgrade(type);if(error)toast(error);else{changed();renderShop();toast(`${upgradeTypes[type].name} upgraded to level ${game.upgrades[type]}.`);}};
 }
-function renderSatisfaction(mood){$('#satisfaction-report').innerHTML='<strong>'+mood.score+'% · '+mood.label+'</strong><p>'+mood.population+' residents · You are the city mayor.</p>'+mood.factors.map(f=>'<div class="project-requirement"><span>'+f.name+'</span><b>'+f.score+'%</b></div><progress max="100" value="'+f.score+'"></progress><p>'+f.tip+'</p>').join('');}
+function renderSatisfaction(mood){$('#satisfaction-report').innerHTML='<strong>'+mood.score+'% · '+mood.label+'</strong><p>'+mood.population+' residents · You are the city mayor.</p><p>City demand: '+Math.round((game.cityEconomy().demand-1)*100)+'% · Business arrival bonus: '+(game.cityEconomy().businessBonus*100).toFixed(1)+'%. Demand stays within -5% to +10%; arrival bonus is capped at 5%. Toll prices stay exactly as posted.</p>'+mood.factors.map(f=>'<div class="project-requirement"><span>'+f.name+'</span><b>'+f.score+'%</b></div><progress max="100" value="'+f.score+'"></progress><p>'+f.tip+'</p>').join('');}
 $('#satisfaction').onclick=()=>{chooseTool(null);closeSheets();closePanel();$('#satisfaction-panel').hidden=false;renderSatisfaction(citySatisfaction(game));};
 $('#close-satisfaction').onclick=()=>$('#satisfaction-panel').hidden=true;
 let moodCache=null;

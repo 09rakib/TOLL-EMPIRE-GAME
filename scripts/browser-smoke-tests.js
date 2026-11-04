@@ -18,5 +18,8 @@ export async function run(){
  assert(document.querySelectorAll('[data-neighborhood]').length===5,'all five district goal cards render');
  assert(document.querySelector('[data-neighborhood="south"] button').disabled,'unfinished district reward cannot be claimed');
  document.querySelector('#close-operations').click();
+ document.querySelector('#satisfaction').click();
+ assert(/Business arrival bonus/.test(document.querySelector('#satisfaction-report').textContent),'mayor report explains bounded economy effects');
+ document.querySelector('#close-satisfaction').click();
  return passed;
 }

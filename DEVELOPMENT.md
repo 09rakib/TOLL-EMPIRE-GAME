@@ -18,6 +18,10 @@ City development > Neighborhoods has four sequential goals in each of five distr
 
 Validation: 131 tests, 45 syntax checks, 14 isolated Chrome checks. Tests exercise real admission payments, reward gating, interrupted traffic progress and save restoration.
 
-4. Bounded satisfaction demand/reward effects and economy playtesting.
+## Phase 4 - Satisfaction economy (complete)
+Planner demand is bounded between -5% and +10%, neutral at 50 satisfaction. Above 70 satisfaction, actual admitted business visits receive up to 5% extra. No bonus is created while idle; posted tolls and park ticket prices stay exact. The mayor report explains the effects. Service distance logic is shared with overlays.
+
+Validation: 133 tests, 46 syntax checks, 15 Chrome checks. Deterministic 60-minute simulation: 1,594 completed trips, 858 toll customers, 660 business visitors, 24,492 earned coins, peak 68 vehicles; no invalid progress or cap overflow. This validates continued activity, not human retention or phone performance.
+
 5. Bus stops and actual vehicles following configured routes.
 6. Building rotation, safe relocation and city decorations; final regression and performance checks.

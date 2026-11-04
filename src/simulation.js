@@ -1,3 +1,4 @@
+import {economyMethods} from './economy.js';
 import {cityGoalMethods} from './city-goals.js';
 import {prepareSideRamps} from './flyover-layout.js';
 import {drivingMethods} from './driving.js';
@@ -361,3 +362,5 @@ Object.assign(Simulation.prototype,plannerMethods);
   Object.assign(Simulation.prototype,officeMethods);
 
 Object.assign(Simulation.prototype,cityGoalMethods);
+
+Object.assign(Simulation.prototype,economyMethods);
