@@ -1,3 +1,4 @@
+import {recordNeighborhoodVisit} from './city-goals.js';
 import {B} from './balance.js';
 import {id} from './world.js';
 import {valueOfTime} from './pathfinder.js';
@@ -32,7 +33,7 @@ export const plannerMethods={
     const passengers=car.kind==='bus'?3:1;this.admissionNext.set(car.targetBuilding,this.time+60/capacity*passengers);
     const ranks=Object.values(this.campaign.districts).reduce((s,n)=>s+n,0),festival=this.campaign.event?.status==='active'&&this.eventSpec()?.kind==='festival';
     const payment=visitFee(b)*passengers*POLICIES[this.settings.policy].revenue*(1+ranks*B.districtRevenueBoost)*(festival?2:1);
-    b.visitors=(b.visitors||0)+passengers;b.revenue=(b.revenue||0)+payment;this.coins+=payment;this.earned+=payment;this.campaign.xp+=payment*B.xpPerCoin;
+    recordNeighborhoodVisit(this,b,passengers);b.visitors=(b.visitors||0)+passengers;b.revenue=(b.revenue||0)+payment;this.coins+=payment;this.earned+=payment;this.campaign.xp+=payment*B.xpPerCoin;
     for(let i=0;i<passengers;i++)this.businessTracker.passage(this.time,car.targetBuilding,car.age);this.businessTracker.payment(this.time,car.targetBuilding,payment);
     this.visitEffects.push({node:car.targetBuilding,time:this.time,amount:payment});if(this.visitEffects.length>12)this.visitEffects.shift();return payment;
   },

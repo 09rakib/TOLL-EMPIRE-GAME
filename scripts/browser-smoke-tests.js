@@ -14,5 +14,9 @@ export async function run(){
  const canvas=document.querySelector('#map'),rect=canvas.getBoundingClientRect();canvas.dispatchEvent(new PointerEvent('pointermove',{clientX:rect.left+rect.width/2,clientY:rect.top+rect.height/2,pointerId:1,bubbles:true}));
  assert(/total/.test(document.querySelector('#construction-quote').textContent),'pointer preview shows complete building quote');
  document.querySelector('#cancel-build').click();
+ document.querySelector('#city-board').click();document.querySelector('[data-board-tab="neighborhoods"]').click();
+ assert(document.querySelectorAll('[data-neighborhood]').length===5,'all five district goal cards render');
+ assert(document.querySelector('[data-neighborhood="south"] button').disabled,'unfinished district reward cannot be claimed');
+ document.querySelector('#close-operations').click();
  return passed;
 }

@@ -13,7 +13,11 @@ The live pointer/touch preview shows footprint, total price including clearing, 
 Validation: 129 tests, 44 syntax checks, 12 isolated Chrome checks.
 
 ## Remaining phases
-3. District, service, traffic and visitor objectives.
+## Phase 3 - Neighborhood goals (complete)
+City development > Neighborhoods has four sequential goals in each of five districts: two connected homes, hospital coverage, 30 fresh paying visitors, then 30 seconds without jams with three local vehicles and ten fresh completed trips. Each reward can be claimed once. Progress and visitor counters persist; existing contracts/saves remain supported.
+
+Validation: 131 tests, 45 syntax checks, 14 isolated Chrome checks. Tests exercise real admission payments, reward gating, interrupted traffic progress and save restoration.
+
 4. Bounded satisfaction demand/reward effects and economy playtesting.
 5. Bus stops and actual vehicles following configured routes.
 6. Building rotation, safe relocation and city decorations; final regression and performance checks.

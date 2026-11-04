@@ -1,3 +1,4 @@
+import {cityGoalMethods} from './city-goals.js';
 import {prepareSideRamps} from './flyover-layout.js';
 import {drivingMethods} from './driving.js';
 import {B} from './balance.js';
@@ -139,7 +140,7 @@ export class Simulation {
     this.tracker.update(this.time,this.graph);
     this.businessTracker.trim(this.time);
     while(this.visitEffects.length&&this.visitEffects[0].time<this.time-2)this.visitEffects.shift();
-    this.updateGrowth(dt);
+    this.updateGrowth(dt);this.updateCityGoals(dt);
     this.updateWalkers(dt);
   }
   syncCarPosition(car){
@@ -358,3 +359,5 @@ Object.assign(Simulation.prototype,plannerMethods);
   Object.assign(Simulation.prototype,forestMethods);
   Object.assign(Simulation.prototype,pedestrianMethods);
   Object.assign(Simulation.prototype,officeMethods);
+
+Object.assign(Simulation.prototype,cityGoalMethods);

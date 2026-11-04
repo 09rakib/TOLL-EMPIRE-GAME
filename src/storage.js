@@ -39,6 +39,7 @@ export function validateSave(data){
   if(!Array.isArray(data.signals)||data.signals.some(n=>!node(n)))return false;
   if(!data.upgrades||Object.values(data.upgrades).some(n=>!Number.isInteger(n)||n<0||n>B.upgradeMaxLevel))return false;
   if(!data.campaign||!Number.isFinite(data.campaign.xp)||data.campaign.xp<0||!Array.isArray(data.campaign.contracts)||!Number.isFinite(data.campaign.pendingOffline)||data.campaign.pendingOffline<0)return false;
+  if(data.campaign.neighborhoods!==undefined){const n=data.campaign.neighborhoods,ids=['north','central','east','south','harbor'];if(!n||!n.visits||!n.districts||typeof n.visits!=='object'||typeof n.districts!=='object'||Object.entries(n.visits).some(([k,v])=>!ids.includes(k)||!Number.isFinite(v)||v<0)||Object.entries(n.districts).some(([k,v])=>!ids.includes(k)||!v||!Number.isInteger(v.stage)||v.stage<0||v.stage>4||['visitsStart','steady','tripStart'].some(f=>!Number.isFinite(v[f])||v[f]<0)))return false;}
   const campaign=data.campaign,keys=new Set(['served','earned','trips','roads','main','managed','buildingLevels','boothLevels']);
   for(const key of ['trips','contractSerial','claimed','eventRound','nextEvent','playTime'])if(!Number.isFinite(campaign[key])||campaign[key]<0)return false;
   if(campaign.contracts.length>3||campaign.contracts.some(c=>!c||!keys.has(c.key)||!Number.isInteger(c.id)||!Number.isFinite(c.target)||c.target<=0||!Number.isFinite(c.start)||!Number.isFinite(c.reward)||c.reward<0||!Number.isFinite(c.xp)||c.xp<0||typeof c.title!=='string'))return false;

@@ -1,3 +1,4 @@
+import {neighborhoodGoal} from './city-goals.js';
 import {B} from './balance.js';
 import {THEMES,POLICIES,DISTRICTS,ACHIEVEMENTS,xpThreshold,contractProgress,districtFor,createSettings} from './campaign.js';
 import {BUILDINGS} from './growth.js';
@@ -12,13 +13,15 @@ const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame}){
   let boardTab='contracts',boardSignature='',buildingNode=null,imported=null;
   const audio=new AudioBus();
+ const goalTab=document.createElement('button');goalTab.dataset.boardTab='neighborhoods';goalTab.textContent='Neighborhoods';$('#operations-sheet .sheet-tabs').append(goalTab);
+
   function action(fn,message){const game=getGame(),error=fn(game);if(error){toast(error);return;}audio.play(game.settings.sound,'reward');changed();if(message)toast(message);renderBoard();updateBuilding();}
   function openBoard(){closeAll();if(getGame().campaign.tutorial)getGame().campaign.tutorial.boardOpened=true;$('#operations-sheet').hidden=false;$('#operations-sheet').scrollTop=0;boardSignature='';renderBoard();}
   function renderBoard(){
     if($('#operations-sheet').hidden)return;
     const game=getGame(),level=game.cityLevel,xp=game.campaign.xp,low=xpThreshold(level),high=xpThreshold(level+1);
     $('#career-summary').innerHTML=`<div><span class="career-level">${level}</span><div><strong>City level ${level}</strong><small>${fmt(xp-low)} / ${fmt(high-low)} XP to the next level</small></div><span>${game.campaign.claimed} contracts<br>completed</span></div><div class="progress-track"><i style="width:${Math.min(100,(xp-low)/(high-low)*100)}%"></i></div>`;
-    const signature=JSON.stringify([boardTab,game.campaign.contracts.map(c=>c.id),game.campaign.districts,game.campaign.achievements,game.campaign.event?.status,game.campaign.event?.kind,level]);
+    const signature=JSON.stringify([boardTab,game.campaign.contracts.map(c=>c.id),game.campaign.districts,game.campaign.achievements,game.campaign.event?.status,game.campaign.event?.kind,level,game.campaign.neighborhoods?.districts]);
     if(signature!==boardSignature){
       boardSignature=signature;
       for(const t of document.querySelectorAll('[data-board-tab]'))t.classList.toggle('active',t.dataset.boardTab===boardTab);
@@ -26,6 +29,9 @@ export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame
         $('#board-content').innerHTML=`<p class="board-intro">Three opportunities at a time. Claim a reward to reveal a new contract. Swap any objective to suit your city.</p><div class="contract-list">${game.campaign.contracts.map(c=>`<article class="contract-card" data-contract="${c.id}"><span class="contract-symbol" data-icon="${c.key==='earned'?'toll':c.key==='trips'?'car':c.key==='managed'||c.key==='buildingLevels'?'home':'road'}"></span><div><strong>${escape(c.title)}</strong><small class="contract-count"></small><div class="progress-track"><i></i></div><span class="contract-reward">$ ${fmt(c.reward)} <b>+${c.xp} XP</b></span></div><div class="contract-actions"><button data-claim="${c.id}">In progress</button><button class="swap-contract" data-swap="${c.id}" aria-label="Swap ${escape(c.title)}">Swap ↻</button></div></article>`).join('')}</div><div class="event-card" id="event-card"></div>`;
         for(const b of document.querySelectorAll('[data-claim]'))b.onclick=()=>action(g=>g.claimContract(+b.dataset.claim),'Contract complete. A fresh opportunity is ready!');
         for(const b of document.querySelectorAll('[data-swap]'))b.onclick=()=>action(g=>g.swapContract(+b.dataset.swap));
+      }else if(boardTab==='neighborhoods'){
+       $('#board-content').innerHTML='<p class="board-intro">Four goals per district: connect two homes, cover a home with a hospital, welcome 30 fresh business visitors, then keep traffic unjammed for 30 seconds. The last goal needs two homes, three local road vehicles and ten completed city trips since unlocking. Service reach uses road distance.</p>'+DISTRICTS.map(d=>{const q=neighborhoodGoal(game,d.id);return `<article class="neighborhood-card" data-neighborhood="${d.id}"><h3>${d.name}</h3><p>${q.title}</p><progress max="${q.target}" value="${q.value}"></progress><small class="neighborhood-count"></small><button data-neighborhood-claim="${d.id}" class="secondary"></button></article>`;}).join('');
+       for(const b of document.querySelectorAll('[data-neighborhood-claim]'))b.onclick=()=>action(g=>g.claimNeighborhood(b.dataset.neighborhoodClaim),'Neighborhood goal complete.');
       }else if(boardTab==='districts'){
         $('#board-content').innerHTML=`<p class="board-intro">Develop a connected building in each district, then invest. Each rank adds 6% city demand and 5% business income. Three ranks per district.</p><div class="district-list">${DISTRICTS.map(d=>{const rank=game.campaign.districts[d.id]||0;return `<article class="district-card"><button class="district-pin" data-focus-district="${d.id}" aria-label="Find ${d.name}"><span data-icon="locate"></span></button><div><strong>${d.name}</strong><small>${d.subtitle}</small><span class="district-rank">${'◆'.repeat(rank)}${'◇'.repeat(3-rank)} <b>${level<d.level?`City level ${d.level} needed`:`Rank ${rank} / 3`}</b></span></div><button data-district="${d.id}" ${level<d.level||rank>=3?'disabled':''}>${rank>=3?'Developed':`$ ${fmt(game.districtCost(d.id))}`}</button></article>`;}).join('')}</div>`;
         for(const b of document.querySelectorAll('[data-district]'))b.onclick=()=>action(g=>g.developDistrict(b.dataset.district),'District investment complete. Your city has more room to grow.');
@@ -40,6 +46,8 @@ export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame
   }
   function updateBoardProgress(){
     const game=getGame(),metrics=game.metrics();
+   for(const row of document.querySelectorAll('[data-neighborhood]')){const q=neighborhoodGoal(game,row.dataset.neighborhood);row.querySelector('progress').value=q.value;row.querySelector('small').textContent=q.complete?'All four goals collected':`${Math.floor(q.value)} / ${q.target} | Goal ${q.stage+1} of 4`;const b=row.querySelector('button');b.disabled=!q.ready;b.textContent=q.complete?'Completed':`Claim $${q.reward} +60 XP`;}
+
     for(const row of document.querySelectorAll('[data-contract]')){
       const c=game.campaign.contracts.find(c=>c.id===+row.dataset.contract);if(!c)continue;
       const current=contractProgress(game,c),ready=current>=c.target;
