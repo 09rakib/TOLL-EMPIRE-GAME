@@ -1,3 +1,4 @@
+import {setupTransitUI} from './transit-ui.js';
 import {constructionQuote} from './construction.js';
 import {idleTask} from './frame-work.js';
 import {citySatisfaction} from './satisfaction.js';
@@ -28,7 +29,7 @@ $('#city').append(treesPanel);hydrateIcons();
 let treeNode=null,resumeAfterClear=null,treeArea=[];
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
-let tool=null,selected=null,spanStart=null,spanBend=null,bentFlyover=false,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null;
+let tool=null,selected=null,spanStart=null,spanBend=null,bentFlyover=false,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null,transitUI=null;
 function hudText(selector,value){const node=$(selector),text=String(value);if(node.textContent!==text)node.textContent=text;}
 const money=n=>Math.floor(n).toLocaleString('en-US'),time=n=>n?`${n.toFixed(1)}s`:'—';
 function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4500);}
@@ -37,7 +38,7 @@ function save(){idleSave?.cancel();clearTimeout(saveTimer);saveTimer=null;const 
 idleSave=idleTask(save);
 function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>idleSave.schedule(),350);}
 function changed(){renderer.dirty=true;scheduleSave();updateUI();}
-function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel','satisfaction-panel','overlay-panel'])$('#'+id).hidden=true;}
+function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel','satisfaction-panel','overlay-panel','transit-panel'])$('#'+id).hidden=true;}
 function chooseTool(next){
   finishStroke(false);
   tool=tool===next?null:next;spanStart=null;spanBend=null;renderer.ghost=null;renderer.spanPreview=null;closePanel();closeSheets();
@@ -136,7 +137,7 @@ function updateUI(){
   hudText('#running-status',game.paused?'City paused':'All systems go');$('#undo').disabled=!game.undoStack.length;
   if(!$('#shop-sheet').hidden)for(const button of document.querySelectorAll('[data-upgrade]')){const key=button.dataset.upgrade;button.disabled=upgradeTypes[key].locked||game.upgrades[key]>=B.upgradeMaxLevel||game.coins<game.upgradeCost(key);}
   if(!$('#build-sheet').hidden)for(const button of document.querySelectorAll('[data-pick-tool]')){const reason=itemUnavailable(catalog.find(i=>i.id===button.dataset.pickTool));button.disabled=!!reason;button.classList.toggle('unaffordable',!!reason);button.querySelector('.afford-label').hidden=!reason;button.querySelector('.afford-label').textContent=reason;}
-  updateBuildQuote();updatePanel();updateTrees();cityUI?.update();tutorial?.update();
+  updateBuildQuote();updatePanel();updateTrees();transitUI?.update();cityUI?.update();tutorial?.update();
 }
 function build(n,quiet=false){
   if(n<0)return;
@@ -257,6 +258,7 @@ document.addEventListener('keydown',e=>{
 window.addEventListener('resize',()=>renderer.resize());window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{save();last=performance.now();accumulator=0;});
 function frame(now){const delta=document.hidden?0:Math.min((now-last)/1000,.15);last=now;if(!document.hidden){game.flushStroke();renderer.updateCamera(delta);accumulator+=delta*playSpeed;let steps=0;while(accumulator>=B.fixedStep&&steps<B.maxFrameSteps){game.update(B.fixedStep);accumulator-=B.fixedStep;steps++;}if(steps>=B.maxFrameSteps)accumulator=Math.min(accumulator,B.fixedStep);renderer.draw(game.paused?1:accumulator/B.fixedStep);uiClock+=delta;saveClock+=delta;if(uiClock>.3){updateUI();uiClock=0;}if(saveClock>B.saveSeconds){idleSave.schedule();saveClock=0;}}requestAnimationFrame(frame);}
 cityUI=setupCityUI({getGame:()=>game,renderer,changed,toast,closeAll:()=>{if(tool)chooseTool(null);closePanel();closeSheets();renderer.selected=null;},replaceGame:data=>{game=new Simulation(data);renderer.game=game;renderer.dirty=true;configurePlannerUI();renderer.resize();renderer.center();save();updateUI();}});
+transitUI=setupTransitUI({getGame:()=>game,chooseTool,changed,toast,closeAll:()=>{chooseTool(null);closePanel();closeSheets();}});
 tutorial=setupTutorial({getGame:()=>game,chooseTool,openCityTools:()=>{chooseTool(null);$('#build-sheet').hidden=false;category='city';for(const t of document.querySelectorAll('[data-category]')){t.classList.toggle('active',t.dataset.category===category);t.setAttribute('aria-selected',String(t.dataset.category===category));}renderBuildMenu();},openBoard:()=>cityUI.openBoard(),save:scheduleSave});
 $('#pause-city').onclick=()=>{manualPaused=!manualPaused;game.paused=manualPaused||!$('#modal').hidden;$('#pause-city').textContent=manualPaused?'▶':'Ⅱ';$('#pause-city').setAttribute('aria-label',manualPaused?'Resume city':'Pause city');updateUI();};
 for(const button of document.querySelectorAll('[data-speed]'))button.onclick=()=>{playSpeed=+button.dataset.speed;for(const b of document.querySelectorAll('[data-speed]'))b.classList.toggle('active',b===button);};

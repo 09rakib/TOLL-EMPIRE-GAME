@@ -1,3 +1,4 @@
+import {transitMethods,emptyTransit} from './transit.js';
 import {economyMethods} from './economy.js';
 import {cityGoalMethods} from './city-goals.js';
 import {prepareSideRamps} from './flyover-layout.js';
@@ -33,6 +34,7 @@ export class Simulation {
     this.tolls=new Map((saved?.tolls||[]).map(([n,t])=>[n,{...t,level:t.level||1}]));
     if(this.mode==='planner')for(const toll of this.tolls.values())toll.price=Math.min(toll.price,this.tollLimit(toll));
     this.flyovers=structuredClone(saved?.flyovers||[]);for(const span of this.flyovers)prepareSideRamps(span,this.tiles,this.trees,new Set(this.flyovers.filter(s=>s!==span).flatMap(s=>[...s.nodes,...(s.rampClearance||[])])));this.signals=new Set(saved?.signals||[]);
+    this.transit=structuredClone(saved?.transit||emptyTransit());
     this.uturns=new Set(saved?.uturns||[]);
     this.bridges=structuredClone(saved?.bridges||[]);this.upgrades={faster:0,booths:0,traffic:0,repair:0,offline:0,...saved?.upgrades};
     this.rampNodes=new Set(this.flyovers.flatMap(s=>[s.nodes[0]+B.layerOffset,s.nodes.at(-1)+B.layerOffset]));this.graph=graphFrom(this.tiles,this.flyovers);
@@ -101,6 +103,7 @@ export class Simulation {
     const current=car.route[car.index],next=car.route[car.index+1];
     if(car.turn){this.updateUTurn(car,dt);return;}
     if(car.stranded){car.age+=dt;if(!this.replanVehicle(car)&&!this.continueToExit(car))return;return;}
+    if(next===undefined&&car.transitId){this.advanceTransitStop(car,dt);return;}
     if(next===undefined){if(this.mode==='planner'&&!this.warming){if(car.targetBuilding!==null&&car.targetBuilding!==undefined&&this.beginOfficeParking(car))return;if(!this.endpoints.includes(current)){if(!this.continueToExit(car))car.stranded=true;return;}car.exiting=true;car.progress+=dt*B.carTilesPerSecond;car.age+=dt;if(car.progress<1.35)return;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}car.done=true;return;}
     if(!this.graph.has(current)||!this.graph.has(next)){car.blocked=true;car.age+=dt;return;}car.blocked=false;
     const direction=roadHeading(current,next,car.heading??null);if(car.heading!==null&&car.heading!==undefined&&direction===(car.heading+2)%4){if(!this.uturns.has(current)){car.stranded=true;return;}this.startUTurn(car,current);this.updateUTurn(car,dt);return;}
@@ -122,7 +125,7 @@ export class Simulation {
     const node=car.route[car.index];
     if(!this.warming)this.tracker.passage(this.time,node,car.edgeAge*B.tileTravelTime*B.carTilesPerSecond);car.edgeAge=0;
     const booth=this.tolls.get(node);
-    if(booth&&!this.warming){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
+    if(booth&&!this.warming&&!car.transitId){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
     if(car.index>=car.route.length-1){if(this.mode==='planner'&&!this.warming){car.progress=0;return;}car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}return;}
     if(car.revision!==this.revision){
       if(!this.replanVehicle(car)){car.stranded=true;car.progress=0;}
@@ -141,7 +144,7 @@ export class Simulation {
     this.tracker.update(this.time,this.graph);
     this.businessTracker.trim(this.time);
     while(this.visitEffects.length&&this.visitEffects[0].time<this.time-2)this.visitEffects.shift();
-    this.updateGrowth(dt);this.updateCityGoals(dt);
+    this.updateTransit();this.updateGrowth(dt);this.updateCityGoals(dt);
     this.updateWalkers(dt);
   }
   syncCarPosition(car){
@@ -154,7 +157,7 @@ export class Simulation {
   }
   get income(){return this.tracker.income;}
   stats(node){return this.tracker.stats(node,this.time);}
-  snapshot(){return {uturns:[...this.uturns],tiles:[...this.tiles],trees:[...this.trees],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
+  snapshot(){return {transit:structuredClone(this.transit),uturns:[...this.uturns],tiles:[...this.tiles],trees:[...this.trees],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
   actionSnapshot(){return this.stroke?.entry?{coins:this.coins}:this.snapshot();}
   flushStroke(){if(this.stroke?.needsRebuild){this.stroke.needsRebuild=false;this.rebuild(true);}}
   beginStroke(tool){this.endStroke();this.stroke={tool,entry:null,actions:0};}
@@ -199,6 +202,7 @@ export class Simulation {
     }
     if(JSON.stringify(previous.flyovers)!==JSON.stringify(previous.after.flyovers))this.flyovers=previous.flyovers;
     if(JSON.stringify(previous.bridges)!==JSON.stringify(previous.after.bridges))this.bridges=previous.bridges;
+    if(previous.transit&&JSON.stringify(previous.transit)!==JSON.stringify(previous.after.transit)){const passengers=this.transit.passengers,nextId=this.transit.nextId;this.transit=structuredClone(previous.transit);this.transit.passengers=passengers;this.transit.nextId=Math.max(nextId,this.transit.nextId);}
     if(previous.uturns)this.uturns=new Set(previous.uturns);
     const beforeSignals=new Set(previous.signals),afterSignals=new Set(previous.after.signals);
     for(const n of new Set([...beforeSignals,...afterSignals]))if(beforeSignals.has(n)!==afterSignals.has(n)){if(beforeSignals.has(n))this.signals.add(n);else this.signals.delete(n);}
@@ -216,6 +220,7 @@ export class Simulation {
   }
   buildCost(tool){return {road:B.roadPrice,main:B.mainPrice,toll:B.tollPrice,signal:B.signalPrice,roundabout:B.roundaboutPrice,uturn:60}[tool]||0;}
   validate(n,tool){
+    if(tool==='bus-stop')return this.validateStop(n);
     if(tool==='clear-trees')return this.trees.has(n)?this.coins<this.treeRemovalCost(n)?`You need $${this.treeRemovalCost(n)} to clear these trees.`:null:'Tap a wooded plot to clear it.';
     if(['road','main'].includes(tool)&&this.trees.has(n))return 'Clear the trees on this plot before building a road.';
     if(PROJECTS[tool])return this.validateProject(n,tool);
@@ -250,6 +255,7 @@ export class Simulation {
   build(n,tool){
     if(tool==='clear-trees')return this.clearTrees(n);
     if(PROJECTS[tool])return this.buildProject(n,tool);
+    if(tool==='bus-stop')return this.buildStop(n);
     if(BUILDINGS[tool])return this.buildBuilding(n,tool);
     if(tool==='demolish')return this.demolish(n);
     const error=this.validate(n,tool);if(error)return error;
@@ -364,3 +370,5 @@ Object.assign(Simulation.prototype,plannerMethods);
 Object.assign(Simulation.prototype,cityGoalMethods);
 
 Object.assign(Simulation.prototype,economyMethods);
+
+Object.assign(Simulation.prototype,transitMethods);

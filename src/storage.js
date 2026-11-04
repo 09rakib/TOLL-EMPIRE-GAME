@@ -1,3 +1,4 @@
+import {transitValid} from './transit.js';
 import {B} from './balance.js';
 import {createCampaign,createSettings} from './campaign.js';
 import {PROJECTS} from './projects.js';
@@ -6,7 +7,7 @@ import {updateRiver} from './river.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
 let lastValidatedRaw=null;
-export function serialize(game){return {version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
+export function serialize(game){return {transit:game.transit,version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
 export function migrate(data){
   if(!data||![1,2,3].includes(data.version))return null;
   if(data.version===1)data={...data,version:2,tolls:data.tolls?.map(([n,t])=>[n,{...t,level:1}]),flyovers:[],bridges:[],signals:[],upgrades:{}};
@@ -22,6 +23,7 @@ export function migrate(data){
 }
 export function validateSave(data){
   if(!data||!Array.isArray(data.tiles)||data.tiles.length!==B.layerOffset||!Number.isFinite(data.coins)||data.coins<0||!Array.isArray(data.buildings))return false;
+  if(data.transit!==undefined&&!transitValid(data.transit))return false;
   const legal=new Set(['grass','river','road','bridge','building','mainRoad','roundabout']);
   const node=n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset;
   if(data.uturns!==undefined&&(!Array.isArray(data.uturns)||new Set(data.uturns).size!==data.uturns.length||data.uturns.some(n=>!node(n)||!['road','mainRoad','bridge','roundabout'].includes(data.tiles[n]))))return false;

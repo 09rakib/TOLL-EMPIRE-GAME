@@ -23,5 +23,11 @@ Planner demand is bounded between -5% and +10%, neutral at 50 satisfaction. Abov
 
 Validation: 133 tests, 46 syntax checks, 15 Chrome checks. Deterministic 60-minute simulation: 1,594 completed trips, 858 toll customers, 660 business visitors, 24,492 earned coins, peak 68 vehicles; no invalid progress or cap overflow. This validates continued activity, not human retention or phone performance.
 
-5. Bus stops and actual vehicles following configured routes.
+## Phase 5 - Public transport (complete)
+Build menu > Public transport places $100 ground-road stops and opens $350 routes with 2-8 stops in player-selected order. Up to four routes each run a six-seat physical bus with four-second dwell, legal U-turns and ordinary following/signals. Service can pause, routes/stops can be refunded, and construction supports undo. Deleted roads suspend service; buses stay visible. Routes and lifetime deliveries save; active vehicles restart on reload like other traffic.
+
+Nearby connected homes/businesses provide bounded passenger demand. Only completed deliveries reduce private vehicle demand (1% per passenger in the last simulation minute, capped at 20%). City-owned buses do not create self-paid toll income. No idle transit income is generated.
+
+Validation: 136 tests, 48 syntax checks, 19 isolated Chrome checks, including actual bus delivery. Tests cover invalid return routes, pause, disconnection, persistence and undo.
+
 6. Building rotation, safe relocation and city decorations; final regression and performance checks.

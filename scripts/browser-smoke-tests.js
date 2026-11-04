@@ -21,5 +21,9 @@ export async function run(){
  document.querySelector('#satisfaction').click();
  assert(/Business arrival bonus/.test(document.querySelector('#satisfaction-report').textContent),'mayor report explains bounded economy effects');
  document.querySelector('#close-satisfaction').click();
+ document.querySelector('#more-tools').click();document.querySelector('#public-transport').click();
+ assert(!document.querySelector('#transit-panel').hidden,'public transport panel opens');
+ document.querySelector('#place-bus-stop').click();assert(!document.querySelector('#build-guide').hidden,'bus stop placement tool opens');document.querySelector('#cancel-build').click();
+ const t=new Simulation();t.trees.clear();t.coins=100000;t.cars=[];t.spawn=()=>false;for(const n of [1292,1302]){t.build(n,'bus-stop');t.build(n,'uturn');}t.build(19*64+12,'home');assert(t.createTransitLine([1292,1302])===null,'legal bus route can be opened');for(let i=0;i<1800;i++)t.update(1/30);assert(t.transit.passengers>0,'scheduled bus delivers passengers in browser');
  return passed;
 }

@@ -4,6 +4,7 @@ import {plannedPlot,plotCells,plotWidth,plotHeight} from './plots.js';
 import {siteConnected} from './city-insights.js';
 export function constructionQuote(g,n,tool,{start=null,bend=null,bent=false}={}){
  if(!Number.isInteger(n)||n<0||n>=B.layerOffset)return {valid:false,text:'Choose a tile inside the city.'};
+ if(tool==='bus-stop'){const error=g.validateStop(n);return {cost:100,valid:!error,text:'1 road tile | $100 | '+(error||'Ready: connect stops in Public transport')};}
  if(BUILDINGS[tool]){
    const plot=plannedPlot(n,tool,g.mode),clearing=plotCells(plot).reduce((s,a)=>s+g.treeRemovalCost(a),0),cost=BUILDINGS[tool].price+clearing,error=g.validateBuilding(n,tool,{clearTrees:true}),connected=siteConnected(g,plot);
    return {plot,cost,clearing,valid:!error,text:`${plotWidth(plot)} x ${plotHeight(plot)} tiles | $${cost} total${clearing?` ($${clearing} clearing)`:''} | ${error||(!connected?'Road needed before opening':clearing?'Ready: confirm clearing & build':'Ready to build')}`};
