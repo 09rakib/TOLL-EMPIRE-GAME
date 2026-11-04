@@ -73,5 +73,10 @@ export async function run(){
   }
  }
  assert(true,'all five toll designs grow without sprite clipping in both road directions and all cache tiers');
+ const residential=new Simulation();residential.trees.clear();residential.coins=100000;residential.cars=[];residential.spawn=()=>false;
+ for(let y=17;y<20;y++)residential.build(y*55+18,'road');residential.build(16*55+18,'home');residential.build(21*55+18,'clinic');
+ residential.addPlannerCar(17*55+18,20*55+18,21*55+18,'car');const resident=residential.cars[0];
+ for(let i=0;i<9000&&!resident.done;i++)residential.update(1/30);
+ assert(resident.done&&residential.endpoints.includes(resident.destination)&&residential.buildingAt(21*55+18).visitors===1,'dead-end home resident completes a real visit and exits without blocking the neighborhood');
  return passed;
 }

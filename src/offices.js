@@ -2,6 +2,7 @@ import {parkingBay,parkingCapacity} from './campus-art.js';
 import {plotPerimeter,plotWidth,plotHeight} from './plots.js';
 import {B} from './balance.js';
 import {id,point} from './world.js';
+import {roadHeading} from './pathfinder.js';
 export const hasParking=b=>b?.kind==='parking'||b?.kind==='garage-home'||b?.type===2&&b?.footprint===2;
 export function parkingCell(b){if(b.kind==='garage-home'){const offsets=[[1,0],[0,1],[0,0],[0,0]],p=offsets[b.rotation||0];return {x:b.x+p[0],y:b.y+p[1]};}const corner=b.parkingCorner??2;return {x:b.x+([1,2].includes(corner)?1:0),y:b.y+(corner>=2?1:0)};}
 export function parkingRoads(b){if(b.kind==='parking')return plotPerimeter(b);const p=parkingCell(b),candidates=[[p.x-1,p.y],[p.x+1,p.y],[p.x,p.y-1],[p.x,p.y+1]];return candidates.filter(([x,y])=>x>=0&&y>=0&&x<B.size&&y<B.size&&!(x>=b.x&&x<b.x+plotWidth(b)&&y>=b.y&&y<b.y+plotHeight(b))).map(([x,y])=>id(x,y));}
@@ -14,6 +15,22 @@ export function driveway(b,entrance,slot){
   return [gate,aisle,[x+u,y+45],[x+u,y+23]];
 }
 export const officeMethods={
+  parkingExitRoute(car,entrance){
+    // An interior origin is a trip source, not a safe on-road destination.
+    // Returning there can leave the car facing the end of a residential cul-de-sac.
+    const origin=this.endpoints.includes(car.origin)?this.route(entrance,car.origin,car.vot):null;
+    if(origin?.length>1)return origin;
+    let best=null;for(const end of this.endpoints){const route=this.route(entrance,end,car.vot);if(route?.length>1&&(!best||route.length<best.length))best=route;}return best;
+  },
+  parkingMergeClear(car,route){
+    const entrance=this.trafficNode(route[0]),heading=roadHeading(route[0],route[1],roadHeading(route[0],route[2]??route[1]));
+    for(const other of this.cars){if(other===car||other.done||other.parkingPhase&&other.parkingPhase!=='waiting')continue;
+      const current=this.trafficNode(other.route[other.index]),next=this.trafficNode(other.route[other.index+1]);
+      const direction=next===undefined?other.heading:roadHeading(other.route[other.index],other.route[other.index+1],other.heading);
+      if(direction!==heading)continue;
+      const progress=this.carLaneProgress(other);if(current===entrance&&progress<B.carSpacing||next===entrance&&progress>1-B.carSpacing)return false;
+    }return true;
+  },
   beginOfficeParking(car){const b=this.buildingAt(car.targetBuilding);if(!b?.managed||b.type===3||!(hasParking(b)?parkingRoads(b):plotPerimeter(b)).includes(car.destination))return false;car.parkingOffice=id(b.x,b.y);car.parkingSlot=null;car.parkingPhase='waiting';car.parkingPaid=false;car.parkingSite={...b};return true;},
   updateOfficeParking(car,dt){
     const live=this.buildingAt(car.parkingOffice),b=live||car.parkingSite;if(!b){car.stranded=true;return;}
@@ -32,11 +49,13 @@ export const officeMethods={
       if(!car.parkingPaid||this.time<car.parkUntil)return;
       const p=point(entrance);car.parkingPhase='leaving';car.parkingPath=[...driveway(b,entrance,car.parkingSlot)].reverse();car.parkingPath.push([(p.x+.5)*B.tile,(p.y+.5)*B.tile]);car.parkingIndex=0;car.parkingDistance=0;
     }
+    // Hold at the driveway before its final segment; never insert into an occupied lane.
+    let departure=null;
     let remaining=dt*B.tile*.65;
-    while(remaining>0&&car.parkingIndex<car.parkingPath.length-1){const a=car.parkingPath[car.parkingIndex],p=car.parkingPath[car.parkingIndex+1],distance=Math.hypot(p[0]-a[0],p[1]-a[1]);if(distance<.01){car.parkingIndex++;continue;}const step=Math.min(remaining,distance-car.parkingDistance);car.parkingDistance+=step;remaining-=step;const f=car.parkingDistance/distance;car.worldX=(a[0]+(p[0]-a[0])*f)/B.tile;car.worldY=(a[1]+(p[1]-a[1])*f)/B.tile;car.angle=Math.atan2(p[1]-a[1],p[0]-a[0]);if(car.parkingDistance>=distance-.001){car.parkingIndex++;car.parkingDistance=0;}}
+    while(remaining>0&&car.parkingIndex<car.parkingPath.length-1){if(car.parkingPhase==='leaving'&&car.parkingIndex===car.parkingPath.length-2){if(entrance===null)return;departure=this.parkingExitRoute(car,entrance);if(!departure||!this.parkingMergeClear(car,departure))return;}const a=car.parkingPath[car.parkingIndex],p=car.parkingPath[car.parkingIndex+1],distance=Math.hypot(p[0]-a[0],p[1]-a[1]);if(distance<.01){car.parkingIndex++;continue;}const step=Math.min(remaining,distance-car.parkingDistance);car.parkingDistance+=step;remaining-=step;const f=car.parkingDistance/distance;car.worldX=(a[0]+(p[0]-a[0])*f)/B.tile;car.worldY=(a[1]+(p[1]-a[1])*f)/B.tile;car.angle=Math.atan2(p[1]-a[1],p[0]-a[0]);if(car.parkingDistance>=distance-.001){car.parkingIndex++;car.parkingDistance=0;}}
     if(car.parkingIndex>=car.parkingPath.length-1){
       if(car.parkingPhase==='entering'){car.parkingPhase='parked';car.angle=-Math.PI/2;this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}
-      else if(car.parkingPhase==='leaving'){const destination=this.graph.has(car.origin)?car.origin:this.endpoints.find(n=>this.graph.has(n)&&n!==entrance),route=this.route(entrance,destination,car.vot);car.parkingPhase=null;this.parkingSlots?.get(car.parkingOffice)?.delete(car.parkingSlot);car.parkingSlot=null;car.targetBuilding=null;car.heading=null;car.blocked=false;car.exiting=false;if(!route||route.length<2){car.stranded=true;car.route=[entrance];car.index=0;car.progress=0;return;}car.route=route;car.index=0;car.progress=0;car.destination=destination;car.revision=this.revision;}
+      else if(car.parkingPhase==='leaving'){const route=departure||this.parkingExitRoute(car,entrance);if(!route||!this.parkingMergeClear(car,route))return;car.parkingPhase=null;this.parkingSlots?.get(car.parkingOffice)?.delete(car.parkingSlot);car.parkingSlot=null;car.targetBuilding=null;car.heading=null;car.blocked=false;car.exiting=false;car.stranded=false;car.route=route;car.index=0;car.progress=0;car.destination=route.at(-1);car.revision=this.revision;}
     }
   },
 };

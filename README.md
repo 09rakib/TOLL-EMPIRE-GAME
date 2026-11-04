@@ -1,7 +1,19 @@
-# Toll Empire · v0.11.4: road-aware toll booth upgrades
+# Toll Empire · v0.11.5: residential traffic flow
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
+
+## v0.11.5 residential deadlock fix
+
+Visitors departing a home or business now receive a complete route to a reachable city exit. The old return path could end at the original home-side road node; cars arriving there facing a dead end could not legally reverse and stayed on the road, blocking the whole neighborhood. Departures still prefer the original city gate when it is reachable, while interior-origin trips select a reachable exit before joining traffic. No unmarked road U-turn, teleport or forced vehicle removal is used.
+
+Driveways also check space in the outgoing lane before their final merge segment and keep the parking bay reserved until departure. Toll fees, visitor receipts, normal traffic demand, buildings and saved city progress remain intact.
+
+Reproduction: `node scripts/residential-flow.mjs --minutes=30` creates 16 adjacent homes beyond the original gate with a maximum traffic upgrade and tourism policy. Emulating the old return routing (`--legacy-return`) produces 29 cars stationary over 30 seconds and zero completed trips in the final ten minutes. With the fix: zero stationary/stranded cars, 772 completed trips, 272 in the final ten minutes and 248 paying business visitors. The legacy diagnostic intentionally exits with failure when it reproduces the jam. These are synthetic simulation results, not a phone FPS or owner's-city measurement.
+
+Validation: 156 Node tests, 52 syntax checks, 55 source-browser checks and 54 exact APK-asset checks. Includes a real dead-end resident visit/exit, waiting for a driveway merge gap, existing save/payment/parking behavior, toll car visibility and opaque flyovers. The separate 60-minute dense traffic fixture also retains flow and income with zero road cars stationary over 30 seconds.
+
+Android v0.11.5 / code 1105 built and linted (zero errors, three advisory warnings); all 52 bundled source/style/HTML files match root, allowing only the intentional browser service-worker registration removal. Ignored local APK: `Toll-Empire-v0.11.5-Android.apk`. No phone installation or phone testing for this update.
 
 ## v0.11.4 road-aware toll booths
 

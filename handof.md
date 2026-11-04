@@ -19,7 +19,7 @@ Gameplay is dependency-free JavaScript and Canvas. `src/` is the game source; `i
 
 ## Current project state
 
-- Latest project version: **v0.11.4** (Android version code 1104).
+- Latest project version: **v0.11.5** (Android version code 1105).
 - All six city improvement phases were implemented and pushed independently on `codex/isometric-2-5d`. Consult `git log` for exact commits and verify branch/status before continuing. Detailed behavior and checks are in `DEVELOPMENT.md`.
 - The current visual direction is an isometric 2.5D city. Preserve the established visual style and mobile layout when extending it.
 - Performance work reuses car and walker render entries, interpolates pedestrians and camera movement, avoids redundant HUD text writes, defers/coalesces autosaves while keeping lifecycle saves immediate, and batches road/tree brush graph rebuilds. Whole-stroke undo preserves income earned during construction.
@@ -117,3 +117,12 @@ Owner requested road-dependent booth orientation and visibly larger designs at e
 Keep the new toll-tile car cutaway as well as the existing underpass redraw: larger gantries otherwise hide four of the passing-car regression samples. Validation: 154 tests; 52 syntax checks; 54 source-browser checks and 53 exact APK-asset checks. Includes automatic orientation after road edits/save restoration, increasing unclipped bounds for all five designs across both directions and all three cache tiers, 30 actual toll car pixels and 18 opaque-flyover/underpass positions. Atlas: scripts/toll-showcase.html; capture with node scripts/browser-smoke.mjs --toll-review.
 
 v0.11.4 code 1104 APK built/linted (zero errors, three advisory warnings); all 52 bundled source/style/HTML files match root. Ignored local APK: Toll-Empire-v0.11.4-Android.apk. No phone installation or phone testing for this task.
+
+## v0.11.5 residential gridlock root cause
+Owner reported that dense homes still caused permanent queues. Reproduced the actual routing bug: a vehicle spawned at an interior home entrance visits a business, then the old parking return route ends back at that interior road node. Facing a dead end, it cannot reverse without an explicit U-turn marker, stays stranded and blocks the neighborhood. Reducing traffic alone cannot fix it.
+
+src/offices.js now selects a complete route to a reachable city gate while the visitor is off-road. Original city-gate origins are preferred when reachable; interior origins select an exit instead of an unserved interior destination. Driveway departures wait for same-direction lane space on the final segment and retain their bay until the merge succeeds. No forced despawn, teleport, unmarked road U-turn, save-schema, fee or demand change.
+
+Repro command: node scripts/residential-flow.mjs --minutes=30. Same 16 adjacent-home fixture with --legacy-return reproduces 29 stationary vehicles and zero trips in final ten minutes (intentional nonzero exit). Fixed: zero stationary/stranded cars, 772 total trips, 272 final-ten-minute trips, 248 business visitors, 4,627 earned coins. General 60-minute pressure fixture also passes with no prolonged road stops. Synthetic fixtures, not a phone performance claim.
+
+Validation: 156 tests, 52 syntax checks, 55 source-browser checks, 54 exact APK-asset checks. v0.11.5 code 1105 APK built/linted (zero errors, three advisory warnings), with 52 bundled source/style/HTML files matching root. Ignored local APK: Toll-Empire-v0.11.5-Android.apk. No phone installation or phone testing.
