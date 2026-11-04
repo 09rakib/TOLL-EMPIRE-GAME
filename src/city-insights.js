@@ -4,7 +4,7 @@ import {plotCells,plotPerimeter} from './plots.js';
 import {hasParking} from './offices.js';
 import {parkingCapacity} from './campus-art.js';
 
-export const serviceRanges={clinic:32,police:38,university:48,park:30};
+export const serviceRanges={clinic:32,police:38,university:48,school:28,park:30};
 // Road distance, including upgrade reach; disconnected services never seed coverage.
 export function serviceDistances(g,kind){
   const distances=new Map(),queue=[];

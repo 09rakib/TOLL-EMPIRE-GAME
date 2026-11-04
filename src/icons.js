@@ -1,5 +1,6 @@
 const paths={
   hotel:'<path d="M5 21V3h14v18M3 21h18M8 7h2m4 0h2M8 11h2m4 0h2M10 21v-5h4v5"/>',
+  school:'<path d="M3 21V9l9-6 9 6v12M1 21h22M9 21v-6h6v6M6 11h2m8 0h2M12 6v5m-2-2h4"/>',
   hospital:'<path d="M4 21V6h16v15M2 21h20M12 2v8M8 6h8M8 14h2m4 0h2M10 21v-4h4v4"/>',
   stadium:'<ellipse cx="12" cy="12" rx="10" ry="7"/><path d="M4 8v8m16-8v8M8 8h8v8H8zM12 8v8"/>',
   transit:'<rect x="5" y="3" width="14" height="15" rx="3"/><path d="M8 7h8M8 11h8M8 18l-3 4m11-4 3 4M7 21h10"/><circle cx="9" cy="15" r=".5"/><circle cx="15" cy="15" r=".5"/>',

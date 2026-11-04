@@ -16,7 +16,7 @@ export const transitMethods={
  removeTransitLine(key){const line=this.transit.lines.find(l=>l.id===key);if(!line)return 'Route not found.';const before=this.actionSnapshot();this.transit.lines=this.transit.lines.filter(l=>l!==line);this.coins+=210;this.record(before);this.rebuild();return null;},
  transitDemandAt(n){
    const seen=new Set([n]),q=[[n,0]];for(let i=0;i<q.length;i++){const [node,d]=q[i];if(d>=8)continue;for(const next of this.graph.get(node)||[])if(!seen.has(next)){seen.add(next);q.push([next,d+1]);}}
-   let demand=0;for(const b of this.buildings)if(b.managed&&[0,1,2,4,5].includes(b.type)&&!['police','university'].includes(b.kind)&&seen.has(this.buildingEntrance(b)))demand+=(b.level||1);return Math.min(6,demand);
+   let demand=0;for(const b of this.buildings)if(b.managed&&[0,1,2,4,5].includes(b.type)&&!['police','university','school'].includes(b.kind)&&seen.has(this.buildingEntrance(b)))demand+=(b.level||1);return Math.min(6,demand);
  },
  transitRelief(){this.transitArrivals??=[];while(this.transitArrivals.length&&this.transitArrivals[0].time<this.time-60)this.transitArrivals.shift();return Math.min(.2,this.transitArrivals.reduce((s,e)=>s+e.count,0)*.01);},
  updateTransit(){

@@ -1,6 +1,17 @@
-# Toll Empire · v0.11.1: city insights, transit and editing
+# Toll Empire · v0.11.2: distinct civic landmarks
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
+
+
+## v0.11.2 civic architecture and School
+
+Hospitals now use white medical wings, red roof crosses and an emergency entrance. Universities have terracotta pitched halls, a courtyard and a visible clock tower. Police stations use navy command blocks, a gold roof shield and a separate watchtower. The new School has yellow classrooms, teal roofs, an L-shaped layout and a sports court. Landmark roofs remain recognizable when walls are repainted. Campuses grow through five levels; inspector upgrade previews use the same isometric artwork as the city. Existing campuses update visually without moving plots or changing their saved progress.
+
+Build menu > City > School costs 800 coins and reserves 4 × 4 tiles. Connect it to a city road to provide local education within 28 road steps, plus three per upgrade. Education satisfaction uses the better school/university coverage at each home; universities retain their longer reach. Schools have no visitor fees or passive income. School placement, clearing, upgrades, move/rotation, demolition/undo, coverage overlays and save/load follow existing campus rules.
+
+Validation: 149 Node tests, 51 syntax checks, 51 source-browser checks and 50 checks on exact Android assets. Rendering checks cover four rotations, levels 1/3/5, original/lavender paints and zoom 0.4/0.78/2.5; zoomed-out silhouettes stay distinct under identical wall paint. All 180 facade pixel samples and 18 underpass positions pass. `node scripts/browser-smoke.mjs --civic-review` also captures the reproducible design atlas at `scripts/civic-showcase.html`.
+
+Android v0.11.2 / code 1102 built and linted successfully (zero errors, three existing advisory warnings). All 51 bundled source/style/HTML files match root sources, allowing only the intentional removal of browser service-worker registration. Local APK: `Toll-Empire-v0.11.2-Android.apk` (ignored by Git). No phone installation or on-device testing was performed for this update.
 
 ## v0.11.1 compact city and phone clarity
 

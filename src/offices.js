@@ -27,7 +27,7 @@ export const officeMethods={
     if(car.parkingPhase==='parked'){
       if(entrance===null)return;
       car.destination=entrance;
-      if((b.type===0||['police','university'].includes(b.kind))&&!car.parkingPaid){car.parkingPaid=true;car.parkUntil=this.time+14+this.random()*8;}
+      if((b.type===0||['police','university','school'].includes(b.kind))&&!car.parkingPaid){car.parkingPaid=true;car.parkUntil=this.time+14+this.random()*8;}
       if(!car.parkingPaid&&this.time>=(this.admissionNext.get(car.parkingOffice)||0)){const paid=this.settleVisit(car);if(paid>0){car.parkingPaid=true;car.parkUntil=this.time+14+this.random()*8;}}
       if(!car.parkingPaid||this.time<car.parkUntil)return;
       const p=point(entrance);car.parkingPhase='leaving';car.parkingPath=[...driveway(b,entrance,car.parkingSlot)].reverse();car.parkingPath.push([(p.x+.5)*B.tile,(p.y+.5)*B.tile]);car.parkingIndex=0;car.parkingDistance=0;

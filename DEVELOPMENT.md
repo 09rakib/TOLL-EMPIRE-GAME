@@ -53,3 +53,10 @@ All six implementation phases are complete. The owner will do the final real-pho
 
 ## v0.11.1 follow-up
 55x55 active map with 64/40-stride migration, original-city archive export and remapped transit/decorations. Normal phone DPR cap 2; low-power cap 1. Validation: 147 tests, 50 syntax checks, high-DPR source/packaged browser checks, successful phone update and live inspection (3,025 plots, canvas 720x1480 at CSS 360x740, 33 buildings). See README and handoff for migration recovery behavior.
+
+## v0.11.2 distinct civic landmarks and School
+Separate isometric layouts and persistent identity palettes replace the shared civic block: white/red medical campus, terracotta courtyard university with clock tower, yellow/teal L-shaped school and navy police compound with watchtower. Civic grounds include service-specific markings; all artwork uses existing adaptive sprite/ground caches. Sprite cache keys include each campus part role. Inspector previews reuse actual city sprites and rotation geometry.
+
+School is a saved 4x4 public service costing 800 coins, with five upgrades and 28-step education reach (+3/level). Education selects the better normalized school/university road distance at each home. It is excluded from business destinations and transit commercial demand and has zero visit capacity/fees. Save schema/key and existing city archives are unchanged.
+
+Validation: 149 tests; 51 syntax checks; 51 source-browser checks; 50 exact packaged-asset browser checks. Includes real Renderer loops over four civic types, four rotations, levels 1/3/5, original/lavender paints and zoom 0.4/0.78/2.5; distinct low-resolution alpha silhouettes under identical paint; School tool and coverage UI; 180 facade pixel samples and 18 underpass positions. Reviewed the generated design atlas at all illustrated levels. Android assembleDebug/lintDebug successful: zero lint errors, three advisory warnings; 51 APK source/style/HTML files match root. No phone install or phone performance testing.

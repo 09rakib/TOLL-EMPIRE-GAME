@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Civic architecture review</title>
+<style>body{margin:0;background:#edf0e1;color:#354d50;font:15px Arial}h1{margin:24px 28px 6px;font-size:27px}p{margin:0 28px 18px}canvas{display:block}</style>
+<h1>Four services. Four city landmarks.</h1><p>Same 4 × 4 site · visible identity from level 1 · shared wall paint keeps distinctive roofs</p>
+<canvas id="art" width="1080" height="1150"></canvas><script type="module">
+import {drawCivicPreview} from '/src/isometric-art.js';
+const c=document.querySelector('canvas').getContext('2d'),kinds=['clinic','university','school','police'],names=['HOSPITAL','UNIVERSITY','SCHOOL','POLICE STATION'];
+for(let row=0;row<4;row++)for(let col=0;col<4;col++){
+ const x=col*270,y=row*285,b={kind:kinds[col],level:[1,3,5,1][row],paint:row===3?4:0,rotation:0};
+ c.fillStyle='#f7f6eb';c.fillRect(x+10,y+8,250,266);c.fillStyle='#354d50';c.textAlign='center';c.font='bold 14px Arial';c.fillText(names[col],x+135,y+32);
+ c.font='12px Arial';c.fillText(row===3?'Level 1 · same lavender wall paint':`Level ${b.level}`,x+135,y+52);
+ c.save();c.translate(x+135,y+115);c.scale(.66,.66);drawCivicPreview(c,b);c.restore();
+ c.save();c.translate(x+62,y+242);c.scale(.22,.22);drawCivicPreview(c,b);c.restore();c.fillStyle='#5d7373';c.textAlign='left';c.font='11px Arial';c.fillText('Zoomed out',x+112,y+247);
+}
+document.body.dataset.ready='true';
+</script></html>

@@ -1,12 +1,14 @@
+import {civicPalette,drawCivicRoof,civicLayout,drawCivicGround} from './civic-art.js';
+import {orientRect} from './city-editing.js';
 import {project,prismOutline} from './isometric.js';
 export function polygon(c,points,fill,stroke){c.beginPath();c.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)c.lineTo(points[i].x,points[i].y);c.closePath();if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=.8;c.stroke();}}
 export function prism(c,x,y,w,h,z,colors,base=0){const a=project(x,y,z),b=project(x+w,y,z),d=project(x,y+h,z),e=project(x+w,y+h,z),bb=project(x+w,y,base),dd=project(x,y+h,base),ee=project(x+w,y+h,base);polygon(c,[d,e,ee,dd],colors[1]);polygon(c,[b,e,ee,bb],colors[2]);polygon(c,[a,b,e,d],colors[0],'#ffffff35');}
 const palettes=[['#e8d6b5','#c5aa87','#a78f76'],['#d1e4d5','#9fbfae','#78a18e'],['#efd2c6','#d1a291','#b77f72'],['#f2dfaf','#d0b575','#ac935f'],['#e1d3eb','#b6a4c9','#9280ab']];
 export function buildingSprite(body,scale=4){
  const {w,h,z,kind,level,paint=0}=body,minX=-h*.75-5,minY=-z-20,maxX=w*.75+5,maxY=(w+h)*.375+5,canvas=document.createElement('canvas');canvas.width=Math.ceil((maxX-minX)*scale);canvas.height=Math.ceil((maxY-minY)*scale);const c=canvas.getContext('2d');c.scale(scale,scale);c.translate(-minX,-minY);
- const glass=['office','clinic','police','university'].includes(kind),colors=glass&&paint===0?['#c8dfe2','#7fa9bc','#557f99']:palettes[paint];
+ const glass=['office','clinic','police','university'].includes(kind),colors=civicPalette(kind,paint)?.walls||(glass&&paint===0?['#c8dfe2','#7fa9bc','#557f99']:palettes[paint]);
  prism(c,2,3,w,h,3,['#8b9a8b40','#60766840','#60766840']);
- const trim=kind==='supermarket'||kind==='shop'?'#cf7051':kind==='clinic'?'#398bb9':kind==='police'?'#426a9e':kind==='university'?'#c08a63':palettes[paint][2];
+ const trim=civicPalette(kind,paint)?.trim||(kind==='supermarket'||kind==='shop'?'#cf7051':kind==='clinic'?'#398bb9':kind==='police'?'#426a9e':kind==='university'?'#c08a63':palettes[paint][2]);
  prism(c,-1,-1,w+2,h+2,3,[trim,trim,trim]);prism(c,0,0,w,h,z,colors);
  for(let row=0;row<Math.min(5,level+1);row++){const zz=9+row*(z-16)/Math.min(5,level+1);for(let i=0;i<Math.max(1,Math.floor(w/14));i++){const x=5+i*14;polygon(c,[project(x,h+.2,zz+7),project(x+7,h+.2,zz+7),project(x+7,h+.2,zz),project(x,h+.2,zz)],glass?'#d7eff3':'#6d929d');}for(let i=0;i<Math.max(1,Math.floor(h/14));i++){const y=5+i*14;polygon(c,[project(w+.2,y,zz+7),project(w+.2,y+7,zz+7),project(w+.2,y+7,zz),project(w+.2,y,zz)],glass?'#a8d1e2':'#547786');}}
  // Doors and continuous roof cornice keep the front legible at phone scale.
@@ -14,8 +16,16 @@ export function buildingSprite(body,scale=4){
  if(body.rotation===3)polygon(c,[project(w+.4,h*.43,0),project(w+.4,h*.62,0),project(w+.4,h*.62,13),project(w+.4,h*.43,13)],'#36566a');
  const rim=z-3;polygon(c,[project(0,h+.5,rim+3),project(w,h+.5,rim+3),project(w,h+.5,rim),project(0,h+.5,rim)],trim);polygon(c,[project(w+.5,0,rim+3),project(w+.5,h,rim+3),project(w+.5,h,rim),project(w+.5,0,rim)],trim);
  if(kind==='home'||kind==='garage-home'){const a=project(-2,-2,z),b=project(w+2,-2,z),d=project(-2,h+2,z),e=project(w+2,h+2,z),r=(body.rotation||0)%2?project(-2,h/2,z+13):project(w/2,-2,z+13),s=(body.rotation||0)%2?project(w+2,h/2,z+13):project(w/2,h+2,z+13);if((body.rotation||0)%2){polygon(c,[a,b,s,r],'#bc8064');polygon(c,[r,s,e,d],'#8f6355');}else{polygon(c,[a,r,s,d],'#bc8064');polygon(c,[r,b,e,s],'#8f6355');}}
- else{prism(c,w*.18,h*.2,w*.3,h*.26,z+5,['#a3bcc4','#7695a3','#617c8d'],z);if(level>=3){const p=project(w*.5,h*.5,z+8);c.fillStyle='#e8f0e8';c.font=`bold ${kind==='clinic'?15:9}px Arial`;c.textAlign='center';c.fillText(kind==='clinic'?'✚':kind==='police'?'★':kind==='university'?'◆':kind==='office'?'▦':'▰',p.x,p.y);}if(level>=4){const p=project(w*.8,h*.25,z);c.strokeStyle='#506e83';c.lineWidth=2;c.beginPath();c.moveTo(p.x,p.y);c.lineTo(p.x,p.y-14);c.stroke();c.fillStyle='#e5c267';c.fillRect(p.x,p.y-14,7,4);}}
+ else if(!drawCivicRoof(c,body,polygon,prism)){prism(c,w*.18,h*.2,w*.3,h*.26,z+5,['#a3bcc4','#7695a3','#617c8d'],z);if(level>=3){const p=project(w*.5,h*.5,z+8);c.fillStyle='#e8f0e8';c.font=`bold ${kind==='clinic'?15:9}px Arial`;c.textAlign='center';c.fillText(kind==='clinic'?'✚':kind==='police'?'★':kind==='university'?'◆':kind==='office'?'▦':'▰',p.x,p.y);}if(level>=4){const p=project(w*.8,h*.25,z);c.strokeStyle='#506e83';c.lineWidth=2;c.beginPath();c.moveTo(p.x,p.y);c.lineTo(p.x,p.y-14);c.stroke();c.fillStyle='#e5c267';c.fillRect(p.x,p.y-14,7,4);}}
  if(body.label){const p=project(w*.5,h+1,z*.67);c.font='bold 8px Arial';c.textAlign='center';const width=Math.min(w*.7+10,c.measureText(body.label).width+8);c.fillStyle=trim;c.fillRect(p.x-width/2,p.y-9,width,12);c.fillStyle='#fff8de';c.fillText(body.label,p.x,p.y);}
  return {canvas,scale,x:minX,y:minY,outline:prismOutline(0,0,w,h,z+13)};
+}
+// The inspector uses exactly the same campus art as the city.
+export function drawCivicPreview(c,b){
+ const size=224;
+ c.save();c.transform(.75,.375,-.75,.375,0,0);drawCivicGround(c,b,size,size);c.restore();
+ const parts=civicLayout(b.kind,size,size,b.level).map(p=>({...p,...orientRect({...b,footprint:4},p.x,p.y,p.w,p.h)}));
+ parts.sort((a,b)=>(a.x+a.y+(a.w+a.h)*.65)-(b.x+b.y+(b.w+b.h)*.65));
+ for(const p of parts){const a=buildingSprite({...b,...p},2),pos=project(p.x,p.y);c.drawImage(a.canvas,pos.x+a.x,pos.y+a.y,a.canvas.width/a.scale,a.canvas.height/a.scale);}
 }
 export function treeSprite(variant=0,scale=4){const canvas=document.createElement('canvas');canvas.width=38*scale;canvas.height=52*scale;const c=canvas.getContext('2d');c.scale(scale,scale);c.fillStyle='#294b3528';c.beginPath();c.ellipse(22,45,13,5,0,0,7);c.fill();c.fillStyle='#8f7859';c.fillRect(17,26,4,18);c.strokeStyle='#796143';c.lineWidth=1;c.beginPath();c.moveTo(19,36);c.lineTo(12,27);c.moveTo(19,32);c.lineTo(27,24);c.stroke();for(const [x,y,r,color]of [[19,23,14,'#4e8258'],[15,17,12,'#6d9b64'],[22,12,9,variant?'#9cbb76':'#87ad6e']]){c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,7);c.fill();}c.strokeStyle='#b2ce8b';c.lineWidth=.7;for(const [x,y]of [[10,18],[18,8],[25,17],[14,28]]){c.beginPath();c.arc(x,y,3,3.4,5.7);c.stroke();}return {canvas,scale,x:-19,y:-44};}

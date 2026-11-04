@@ -1,3 +1,4 @@
+import {civicKinds,civicLayout,drawCivicGround} from './civic-art.js';
 import {mayorPose} from './mayor-drive.js';
 import {orientRect} from './city-editing.js';
 import {cityOverlay} from './city-insights.js';
@@ -30,11 +31,12 @@ export class Renderer extends FlatRenderer{
  bake(){
   this.chunks.clear();this.scene=[];this.skyNodes=new Map();this.skyCars=new Map();this.underpassCars=new Map();this.groundSpans=new Map();this.sites=this.game.buildings;this.siteBounds=this.sites.map(b=>({b,x:b.x*T,y:b.y*T,w:plotWidth(b)*T,h:plotHeight(b)*T,z:100}));this.viewKey=null;const mini=this.terrain.getContext('2d'),theme=THEMES[this.game.settings.theme];
   for(let y=0;y<B.size;y++)for(let x=0;x<B.size;x++){const n=id(x,y),type=this.game.tiles[n];mini.fillStyle=type==='river'?theme.water:isRoad(type)?'#697e80':type==='building'?'#dfc590':theme.grass[0];mini.fillRect(x,y,1,1);}
-  const add=(b,x,y,w,h,z,kind,label='')=>{if(!(b.type===2&&b.footprint===2))({x,y,w,h}=orientRect(b,x,y,w,h));const o={kind:'building',x:b.x*T+x,y:b.y*T+y,w,h,z,artKind:kind,level:b.level||1,paint:b.paint||0,rotation:b.rotation||0,label,node:id(b.x,b.y)};o.depth=o.x+o.y+(w+h)*.65;o.key=[kind,w,h,z,o.level,o.paint,o.rotation,label].join(':');o.outline=prismOutline(o.x,o.y,w,h,z+12);this.scene.push(o);};
+  const add=(b,x,y,w,h,z,kind,label='',role='')=>{if(!(b.type===2&&b.footprint===2))({x,y,w,h}=orientRect(b,x,y,w,h));const o={kind:'building',x:b.x*T+x,y:b.y*T+y,w,h,z,artKind:kind,level:b.level||1,paint:b.paint||0,rotation:b.rotation||0,label,role,node:id(b.x,b.y)};o.depth=o.x+o.y+(w+h)*.65;o.key=[kind,w,h,z,o.level,o.paint,o.rotation,label,role].join(':');o.outline=prismOutline(o.x,o.y,w,h,z+12);this.scene.push(o);};
   for(const b of this.game.buildings){const w=plotWidth(b)*T,h=plotHeight(b)*T,L=b.level||1,kind=b.kind||['home','shop','office','park','clinic','hotel'][b.type];
    if(b.type===3){add(b,w*.56,h*.24,w*.19,h*.18,14+L*3,'park');for(const [u,v]of [[.12,.14],[.8,.82],[.13,.76],[.82,.2]])this.scene.push({kind:'tree',x:b.x*T+u*w,y:b.y*T+v*h,w:0,h:0,depth:b.x*T+b.y*T+(u*w+v*h),variant:1});}
    else if(kind==='parking'){add(b,12,h-47,20,24,13+L*3,'parking','P');if(L>=3)add(b,w-31,h-40,12,16,18,'parking');}
    else if(b.type===2&&b.footprint===2){const p=parkingCell(b);for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)if(b.x+dx!==p.x||b.y+dy!==p.y)add(b,dx*T+6,dy*T+6,T-12,T-12,23+L*10,'office',dx===0&&dy===0?'OFFICE':'');}
+   else if(b.footprint===4&&civicKinds.includes(kind)){for(const p of civicLayout(kind,w,h,L))add(b,p.x,p.y,p.w,p.h,p.z,kind,p.label,p.role);}
    else if(b.footprint===4){add(b,w*.16,h*.12,w*.68,h*.43,28+L*9,kind,kind==='clinic'?'HOSPITAL':kind==='police'?'POLICE':kind==='university'?'UNIVERSITY':'MARKET');if(L>=3){add(b,10,h*.36,w*.18,h*.22,18+L*5,kind);add(b,w*.78,h*.36,w*.18,h*.22,18+L*5,kind);}}
    else{const bw=kind==='garage-home'?T:w;add(b,7,7,bw-14,(kind==='garage-home'?T:h)-14,18+L*9,kind,kind==='hotel'?'HOTEL':b.type===1?'STORE':'');}
   }
@@ -61,6 +63,7 @@ export class Renderer extends FlatRenderer{
    if(b.type===3&&b.footprint===4){c.save();c.translate(x+w/2,y+h/2);c.rotate((b.rotation||0)*Math.PI/2);c.translate(-x-w/2,-y-h/2);drawCityPark(c,b);c.restore();}
    if(b.kind==='parking'){c.fillStyle='#617582';c.fillRect(x+7,y+7,w-14,h-14);c.strokeStyle='#e9e8d6';c.lineWidth=2;for(let slot=0;slot<parkingCapacity(b);slot++){const p=parkingBay(b,slot);c.strokeRect(p.x-11,p.y-21,23,44);}c.fillStyle='#f3e8bc';c.font='bold 18px Arial';c.textAlign='center';c.fillText('P',x+w/2,y+h-17);}
    else if(b.kind==='garage-home'||b.type===2&&b.footprint===2){const p=parkingCell(b),px=p.x*T,py=p.y*T;c.fillStyle='#65777f';c.fillRect(px+2,py+2,T-4,T-4);c.strokeStyle='#ebe7cf';c.lineWidth=1.5;c.strokeRect(px+8,py+6,16,31);c.strokeRect(px+27,py+6,16,31);}
+   else if(b.footprint===4&&civicKinds.includes(b.kind)){c.save();c.translate(x,y);drawCivicGround(c,b,w,h);c.restore();}
    else if(b.footprint===4){c.fillStyle='#81908f';c.fillRect(x+19,y+h*.68,w-38,h*.26);c.strokeStyle='#e9e8d8';c.lineWidth=1.5;for(let px=x+24;px<x+w-25;px+=25)c.strokeRect(px,y+h*.7,20,h*.2);}
  }
  drawSites(c,bounds){this.siteGrounds??=new Map();this.plane(c,()=>{for(const site of this.siteBounds){if(!this.onScreen(site))continue;const b=site.b;if(site.w===T&&site.h===T&&b.type!==3){c.fillStyle='#cdd4bf';c.fillRect(site.x+1,site.y+1,T-2,T-2);continue;}const key=[b.kind,b.type,site.w,site.h,b.level,b.paint,b.parkingCorner,b.rotation].join(':');let canvas=this.siteGrounds.get(key);if(!canvas){canvas=document.createElement('canvas');canvas.width=site.w*(this.artScale||4);canvas.height=site.h*(this.artScale||4);const ctx=canvas.getContext('2d');ctx.scale(this.artScale||4,this.artScale||4);this.paintSite(ctx,{...b,x:0,y:0});this.siteGrounds.set(key,canvas);}c.drawImage(canvas,site.x,site.y,site.w,site.h);}});}

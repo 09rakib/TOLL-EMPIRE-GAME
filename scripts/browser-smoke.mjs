@@ -54,4 +54,10 @@ try{
  if(errors.length)throw Error(errors.join('\n'));
  const shot=await send('Page.captureScreenshot',{format:'png'});const screenshot=path.join(profile,'city-smoke.png');await writeFile(screenshot,Buffer.from(shot.data,'base64'));
  console.log(JSON.stringify({passed:result.result.value,viewport:'390x844',screenshot,errors},null,2));
+ if(process.argv.includes('--civic-review')){
+  await send('Emulation.setDeviceMetricsOverride',{width:1080,height:1255,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/scripts/civic-showcase.html`});
+  let ready=false;for(let i=0;i<100;i++){if(await evaluate("document.body?.dataset.ready==='true'")){ready=true;break;}await delay(100);}if(!ready)throw Error('Civic review did not render');
+  const artShot=await send('Page.captureScreenshot',{format:'png'}),artPath=path.join(profile,'civic-review.png');await writeFile(artPath,Buffer.from(artShot.data,'base64'));console.log(JSON.stringify({civicReview:artPath}));
+ }
 }catch(e){console.error(e);process.exitCode=1;}finally{clearTimeout(timer);ws?.close();chrome.kill();server.closeAllConnections();server.close();}

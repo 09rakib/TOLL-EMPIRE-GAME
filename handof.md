@@ -19,13 +19,13 @@ Gameplay is dependency-free JavaScript and Canvas. `src/` is the game source; `i
 
 ## Current project state
 
-- Latest project version: **v0.11.1** (Android version code 1101).
+- Latest project version: **v0.11.2** (Android version code 1102).
 - All six city improvement phases were implemented and pushed independently on `codex/isometric-2-5d`. Consult `git log` for exact commits and verify branch/status before continuing. Detailed behavior and checks are in `DEVELOPMENT.md`.
 - The current visual direction is an isometric 2.5D city. Preserve the established visual style and mobile layout when extending it.
 - Performance work reuses car and walker render entries, interpolates pedestrians and camera movement, avoids redundant HUD text writes, defers/coalesces autosaves while keeping lifecycle saves immediate, and batches road/tree brush graph rebuilds. Whole-stroke undo preserves income earned during construction.
 - The v0.10.5 heavy 3× desktop browser benchmark measured 59.6 rAF FPS, 5.82 ms mean CPU work, 10.4 ms p95 and three intervals over 25 ms at 390×844 CSS pixels and DPR 1.5. This is a local browser fixture, not a phone FPS guarantee.
 - Underpass visibility is deliberately handled by an explicit car redraw after flyover decks. Do not remove or reorder that pass as a casual optimization; it prevents ground cars disappearing beneath decks. The browser pixel regression checks 18 positions, including adjacent-road cutaways.
-- APK build and Android lint succeeded for v0.11.0 (zero errors, three advisory warnings); all 49 bundled source/style/HTML files match current root sources. Packaged game assets pass 32 browser checks. No phone installation or phone testing was performed for this release. Do not claim a newer APK exists until it is successfully built. The owner previously asked not to install on their phone until they explicitly say it is time; browser testing is acceptable.
+- APK build and Android lint succeeded for v0.11.0 (zero errors, three advisory warnings); all 49 bundled source/style/HTML files matched the root sources at that release. Packaged game assets pass 32 browser checks. No phone installation or phone testing was performed for this release. Do not claim a newer APK exists until it is successfully built. The owner previously asked not to install on their phone until they explicitly say it is time; browser testing is acceptable.
 
 ## Completed city improvement phases (v0.11.0)
 
@@ -96,3 +96,10 @@ Active map reduced to 55x55 (3,025 plots). Migration remaps all stored ground no
 Normal DPR cap increased from 1.5 to 2; low-power mode remains 1. Adaptive artwork tiers still avoid oversized zoom-out textures. Read-only phone inspection measured DPR 3.5, CSS 360x740 and canvas 720x1480, confirmed mapSize 55 / 3,025 plots with 33 buildings and a preserved original-city archive. An app WebView storage backup was saved only in OS temp before installation.
 
 147 tests and 50 syntax checks pass; source and exact Android assets pass browser checks including high-DPR density, underpass pixels and Mayor Drive. v0.11.1 code 1101 APK built/linted, installed with -r and cold-launched successfully; sampled AndroidRuntime/Chromium error logs empty. Dense zoom-out browser 3x fixture: 53.2 rAF FPS, mean CPU 6.1 ms, p95 10 ms at DPR 2. No sustained phone FPS claim.
+
+## v0.11.2 civic identity and separate School
+Hospital, University and Police Station no longer share one campus layout/palette. Hospital: white/red wings, large roof cross and emergency entrance. University: terracotta pitched halls, courtyard and tall central clock tower. Police: navy headquarters, gold shield, separate watchtower. Owner explicitly requested a separate School: yellow/teal L-shaped classrooms and a sports court. Roof identity survives wall repainting, layouts rotate, upgrades grow the buildings, and inspector previews use actual isometric art. Implementation: src/civic-art.js, isometric-art.js and isometric-renderer.js.
+
+School costs 800 coins, occupies 4x4, has five levels and provides local education at 28 road steps +3 per upgrade. Education uses the better normalized school/university reach at each home. No commercial visits, fees or passive income. School coverage overlay, build icon/menu, inspector, clearing, upgrades, editing, undo and save/load are integrated. Existing save key/schema, buildings and archived original cities remain intact.
+
+Final validation: 149 Node tests; 51 syntax checks; 51 source-browser checks and 50 exact Android-asset browser checks, including 180 wall pixel samples, 18 underpass positions and civic rendering across rotations/paints/zoom tiers. Visual atlas: scripts/civic-showcase.html; capture with node scripts/browser-smoke.mjs --civic-review. v0.11.2 code 1102 APK built/linted (zero errors, three advisory warnings); 51 bundled source/style/HTML files match root. Ignored local APK: Toll-Empire-v0.11.2-Android.apk. No phone installation or on-device testing for this task; do not infer authorization to install from earlier completed phone updates.
