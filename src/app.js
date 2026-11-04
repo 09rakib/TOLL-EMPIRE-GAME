@@ -17,7 +17,7 @@ import {drawUpgradeComparison} from './architecture.js';
 import {plotCells,plannedPlot} from './plots.js';
 const $=s=>document.querySelector(s);
 // Keep secondary actions in the build menu instead of over the city.
-for(const [id,icon,label]of [['undo','undo','Undo'],['shop','star','City upgrades'],['city-board','flag','City development'],['customize','paint','Customize'],['heatmap','layers','Traffic view']]){
+for(const [id,icon,label]of [['undo','undo','Undo'],['shop','star','City upgrades'],['city-board','flag','City development'],['customize','paint','Customize'],['heatmap','layers','City overlays']]){
   const button=$('#'+id);button.removeAttribute('data-icon');button.innerHTML=`<span data-icon="${icon}"></span><span>${label}</span>`;$('#menu-actions').append(button);
 }
 const showGoal=document.createElement('button');showGoal.id='show-objective';showGoal.innerHTML='<span data-icon="flag"></span><span>Show objective</span>';$('#menu-actions').append(showGoal);
@@ -36,7 +36,7 @@ function save(){idleSave?.cancel();clearTimeout(saveTimer);saveTimer=null;const 
 idleSave=idleTask(save);
 function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>idleSave.schedule(),350);}
 function changed(){renderer.dirty=true;scheduleSave();updateUI();}
-function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel','satisfaction-panel'])$('#'+id).hidden=true;}
+function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel','satisfaction-panel','overlay-panel'])$('#'+id).hidden=true;}
 function chooseTool(next){
   finishStroke(false);
   tool=tool===next?null:next;spanStart=null;spanBend=null;renderer.ghost=null;renderer.spanPreview=null;closePanel();closeSheets();
@@ -201,7 +201,11 @@ canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);finishS
 canvas.addEventListener('pointerleave',()=>{renderer.ghost=null;renderer.spanPreview=null;});
 canvas.addEventListener('wheel',e=>{e.preventDefault();const p=local(e);renderer.zoom(-Math.sign(e.deltaY)*.08,p.x,p.y);},{passive:false});
 $('#zoom-in').onclick=()=>renderer.zoom(B.zoomStep);$('#zoom-out').onclick=()=>renderer.zoom(-B.zoomStep);$('#center').onclick=()=>renderer.center();
-$('#heatmap').onclick=()=>{$('#build-sheet').hidden=true;renderer.heat=!renderer.heat;$('#heatmap').classList.toggle('active',renderer.heat);$('#heatmap').setAttribute('aria-pressed',String(renderer.heat));$('#heat-legend').hidden=!renderer.heat;$('#hint').hidden=renderer.heat||!!tool;toast(renderer.heat?'Traffic view: ● free · ▨ busy · ▧ jammed. Striped tiles show congestion.':'Back to city view.');};
+const overlayPanel=document.createElement('aside');overlayPanel.id='overlay-panel';overlayPanel.className='panel';overlayPanel.hidden=true;overlayPanel.setAttribute('aria-label','City overlays');overlayPanel.innerHTML='<button class="panel-close" id="close-overlays" aria-label="Close overlays">&times;</button><h2>City overlays</h2><p>Inspect problems, then tap a building or road to fix them.</p><div class="overlay-options">'+[['','Normal city'],['connections','Disconnected buildings & roads'],['traffic','Traffic congestion'],['clinic','Hospital coverage'],['police','Police coverage'],['university','University coverage'],['park','Park coverage'],['parking','Parking occupancy']].map(([key,label])=>`<button data-overlay="${key}" aria-pressed="false">${label}</button>`).join('')+'</div><p>Red: needs attention. Teal: covered / available. Amber: busy / isolated road. Service reach follows roads and grows with upgrades.</p>';$('#city').append(overlayPanel);
+$('#heatmap').onclick=()=>{chooseTool(null);overlayPanel.hidden=false;};
+$('#close-overlays').onclick=()=>overlayPanel.hidden=true;
+for(const button of overlayPanel.querySelectorAll('[data-overlay]'))button.onclick=()=>{renderer.overlayMode=button.dataset.overlay;renderer.heat=false;$('#heatmap').classList.toggle('active',!!renderer.overlayMode);for(const b of overlayPanel.querySelectorAll('[data-overlay]'))b.setAttribute('aria-pressed',String(b===button));$('#heat-legend').hidden=!renderer.overlayMode;$('#heat-legend').textContent=renderer.overlayMode?button.textContent+' | Red: attention | Teal: covered / free | Amber: busy / isolated':'';overlayPanel.hidden=true;};
+
 for(const button of document.querySelectorAll('[data-tool]'))button.onclick=()=>chooseTool(button.dataset.tool);
 for(const button of document.querySelectorAll('[data-direct-build]'))button.onclick=()=>chooseTool(button.dataset.directBuild);
 $('#flyover-bend').onclick=()=>{bentFlyover=!bentFlyover;spanStart=null;spanBend=null;renderer.spanPreview=null;$('#flyover-bend').textContent=bentFlyover?'Bend: ON':'Add bend';$('#build-instruction').textContent=bentFlyover?'Choose start road, aligned bend tile, then exit bank/road.':'Choose two roads/banks. An L-shaped route is planned automatically.';};
