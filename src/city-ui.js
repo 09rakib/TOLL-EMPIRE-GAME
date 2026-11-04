@@ -10,9 +10,13 @@ import {visitFee,visitCapacity,architectureTier} from './planner.js';
 import {drawUpgradeComparison} from './architecture.js';
 const $=s=>document.querySelector(s),fmt=n=>Math.floor(n).toLocaleString('en-US');
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame}){
+export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame,beginMove}){
   let boardTab='contracts',boardSignature='',buildingNode=null,imported=null;
   const audio=new AudioBus();
+ const editActions=document.createElement('div');editActions.className='building-edit-actions';editActions.innerHTML='<button id="move-building" class="secondary">Move property | $50</button><button id="rotate-building" class="secondary">Rotate 90 degrees | $25</button><p id="edit-building-note"></p>';$('#remove-building').after(editActions);
+ $('#move-building').onclick=()=>beginMove(buildingNode);
+ $('#rotate-building').onclick=()=>action(g=>g.rotateBuilding(buildingNode),'Property rotated.');
+
  const goalTab=document.createElement('button');goalTab.dataset.boardTab='neighborhoods';goalTab.textContent='Neighborhoods';$('#operations-sheet .sheet-tabs').append(goalTab);
 
   function action(fn,message){const game=getGame(),error=fn(game);if(error){toast(error);return;}audio.play(game.settings.sound,'reward');changed();if(message)toast(message);renderBoard();updateBuilding();}
@@ -68,6 +72,7 @@ export function setupCityUI({getGame,renderer,changed,toast,closeAll,replaceGame
     if($('#building-panel').hidden||buildingNode===null)return;
     const game=getGame(),b=game.buildingAt(buildingNode);if(!b){$('#building-panel').hidden=true;return;}
     const spec=BUILDINGS[b.kind]||Object.values(BUILDINGS).find(s=>s.type===b.type),connected=game.buildingEntrance(b)!==null,level=b.level||1,cost=game.buildingUpgradeCost(b),district=districtFor(b);
+    $('#move-building').disabled=!b.managed||!!b.project||game.buildingInUse(b);$('#rotate-building').disabled=$('#move-building').disabled;$('#edit-building-note').textContent=game.buildingInUse(b)?'Wait for approaching and current visitors before editing.':'Move keeps upgrades, paint and visitor totals. Destination trees must be cleared first. Entrance direction: '+((b.rotation||0)*90)+' degrees.';
     $('#building-description').textContent=`${district?.name||'City outskirts'} · ${connected?'Road connection ready':'Road connection needed'}`;
     if(b.project){
       const project=PROJECTS[b.project],status=projectStatus(game,b);

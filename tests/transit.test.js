@@ -18,6 +18,11 @@ test('scheduled bus drives stops, dwells, delivers real riders and reduces priva
 });
 test('disconnected route stays visible and resumes after a road is repaired',()=>{
  const g=city(),a=id(12,20),b=id(22,20);for(const n of [a,b]){g.build(n,'bus-stop');g.build(n,'uturn');}g.createTransitLine([a,b]);for(let i=0;i<100;i++)g.update(1/30);const bus=g.cars.find(c=>c.transitId);assert.ok(bus);
- g.removeRoad(id(17,20));for(let i=0;i<1800;i++)g.update(1/30);assert.ok(g.cars.includes(bus));assert.equal(g.cars.filter(c=>c.transitId).length,1);g.build(id(17,20),'road');for(let i=0;i<1800;i++)g.update(1/30);assert.ok(Number.isFinite(bus.worldX+bus.worldY));
+ g.removeRoad(id(17,20));for(let i=0;i<1800;i++)g.update(1/30);assert.ok(g.cars.includes(bus));assert.equal(bus.destination,b);assert.equal(g.cars.filter(c=>c.transitId).length,1);g.build(id(17,20),'road');for(let i=0;i<1800;i++)g.update(1/30);assert.ok(Number.isFinite(bus.worldX+bus.worldY));
  const save=serialize(g);save.transit.lines[0].stops=[a,a];assert.equal(validateSave(save),false);
+});
+test('empty destinations provide no passenger relief and malformed route objects fail validation',()=>{
+ const g=city(),a=id(12,20),b=id(25,20);for(const n of [a,b]){g.build(n,'bus-stop');g.build(n,'uturn');}g.build(id(12,19),'home');g.createTransitLine([a,b]);
+ for(let i=0;i<2400;i++)g.update(1/30);assert.equal(g.transit.passengers,0);assert.equal(g.transitRelief(),0);
+ const saved=serialize(g);saved.transit.lines=[null];assert.equal(validateSave(saved),false);
 });

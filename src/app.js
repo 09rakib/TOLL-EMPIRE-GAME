@@ -26,6 +26,7 @@ const showGoal=document.createElement('button');showGoal.id='show-objective';sho
 hydrateIcons();
 const treesPanel=document.createElement('aside');treesPanel.id='tree-panel';treesPanel.className='panel';treesPanel.hidden=true;treesPanel.setAttribute('aria-label','Clear wooded plot');treesPanel.innerHTML='<button class="panel-close" id="close-trees" aria-label="Close tree details">×</button><span class="eyebrow">PREPARE YOUR LAND</span><h2>Wooded plot</h2><div class="tree-illustration" data-icon="tree"></div><p id="tree-info"></p><p class="tree-note">Clearing is required before building roads, homes, hospitals or hotels here. The land stays clear after saving.</p><button class="primary" id="clear-plot"></button>';
 $('#city').append(treesPanel);hydrateIcons();
+let movingNode=null;
 let treeNode=null,resumeAfterClear=null,treeArea=[];
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
@@ -50,7 +51,7 @@ function chooseTool(next){
   updateBuildQuote();tutorial?.update();
 }
 const quoteLabel=document.createElement('small');quoteLabel.id='construction-quote';quoteLabel.setAttribute('role','status');$('#build-guide').append(quoteLabel);
-function updateBuildQuote(n=renderer.ghost?.node){if(!tool){quoteLabel.textContent='';return;}if(n===undefined){quoteLabel.textContent='Touch or hover over a tile for the complete quote.';return;}const q=constructionQuote(game,n,tool,{start:spanStart,bend:spanBend,bent:bentFlyover});quoteLabel.textContent=q.text;quoteLabel.dataset.state=q.valid?'ready':'blocked';}
+function updateBuildQuote(n=renderer.ghost?.node){if(!tool){quoteLabel.textContent='';return;}if(n===undefined){quoteLabel.textContent='Touch or hover over a tile for the complete quote.';return;}if(tool==='move-building'){const error=game.validateMove(movingNode,n);quoteLabel.textContent='$50 move | '+(error||'Ready: tap to move the whole property');quoteLabel.dataset.state=error?'blocked':'ready';return;}const q=constructionQuote(game,n,tool,{start:spanStart,bend:spanBend,bent:bentFlyover});quoteLabel.textContent=q.text;quoteLabel.dataset.state=q.valid?'ready':'blocked';}
 function closePanel(){selected=null;renderer.selected=null;$('#road-panel').hidden=true;}
 function openTrees(n,resume=null){
   const cells=BUILDINGS[resume]?plotCells(plannedPlot(n,resume,game.mode)):[n];
@@ -141,6 +142,7 @@ function updateUI(){
 }
 function build(n,quiet=false){
   if(n<0)return;
+  if(tool==='move-building'){const error=game.moveBuilding(movingNode,n);if(error){toast(error);return false;}movingNode=null;revealBuilding(n);toast('Property moved. Upgrades and visitor totals preserved.');return true;}
   if(tool==='flyover'||tool==='bridge'){
     if(spanStart===null){if(!isRoad(game.tiles[n])){toast('Start the span on an existing road.');return;}spanStart=n;renderer.selected=n;$('#build-instruction').textContent=tool==='flyover'?(bentFlyover?'Flyover · Tap an aligned clear tile for the bend.':'Flyover · Tap the exit road; diagonal ends create an L route.'):(bentFlyover?'Bridge · Tap an aligned water tile for the bend.':'Bridge · Tap the opposite bank; diagonal ends create an L route.');return;}
     if(n===spanStart){const current=tool;chooseTool(null);chooseTool(current);return;}
@@ -176,7 +178,9 @@ canvas.addEventListener('pointerdown',e=>{
   renderer.dragging=true;renderer.velocityX=0;renderer.velocityY=0;
   if(pointers.size===2){finishStroke(false);const [a,b]=[...pointers.values()];pinch={distance:Math.hypot(a.x-b.x,a.y-b.y)};if(gesture){gesture.moved=true;gesture.wasPinch=true;}return;}
   gesture={...p,startX:p.x,startY:p.y,moved:false,wasPinch:false,visited:new Set()};lastBuilt=renderer.tileAt(p.x,p.y);
+  if(tool==='move-building'&&lastBuilt>=0)renderer.ghost={...game.buildingAt(movingNode),node:lastBuilt,x:lastBuilt%B.size,y:Math.floor(lastBuilt/B.size),valid:!game.validateMove(movingNode,lastBuilt)};
   if(BUILDINGS[tool]&&lastBuilt>=0)renderer.ghost={node:lastBuilt,...plannedPlot(lastBuilt,tool,game.mode),valid:!game.validateBuilding(lastBuilt,tool,{clearTrees:true})};
+  if(tool&&!BUILDINGS[tool]&&!['move-building','flyover','bridge'].includes(tool)&&lastBuilt>=0)renderer.ghost={node:lastBuilt,...plannedPlot(lastBuilt,tool,game.mode),valid:!game.validate(lastBuilt,tool)};
   if(tool&&lastBuilt>=0)updateBuildQuote(lastBuilt);
   if(['road','main','demolish','clear-trees'].includes(tool))game.beginStroke(tool);
 });
@@ -185,7 +189,7 @@ canvas.addEventListener('pointermove',e=>{
   if(tool&&n>=0){
     const span=tool==='flyover'||tool==='bridge';
     const bent=span&&bentFlyover;const plan=bent&&spanBend!==null?(tool==='bridge'?game.planBentBridge(spanStart,spanBend,n):game.planBentFlyover(spanStart,spanBend,n)):game.planSpan(spanStart??n,n,tool);
-    renderer.ghost={node:n,...plannedPlot(n,tool,game.mode),valid:span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:BUILDINGS[tool]?!game.validateBuilding(n,tool,{clearTrees:true}):!game.validate(n,tool)};
+    renderer.ghost={node:n,...(tool==='move-building'?{...game.buildingAt(movingNode),x:n%B.size,y:Math.floor(n/B.size)}:plannedPlot(n,tool,game.mode)),valid:tool==='move-building'?!game.validateMove(movingNode,n):span?spanStart===null?isRoad(game.tiles[n]):bent&&spanBend===null?(point(spanStart).x===point(n).x||point(spanStart).y===point(n).y)&&!game.trees.has(n):!plan.error:BUILDINGS[tool]?!game.validateBuilding(n,tool,{clearTrees:true}):!game.validate(n,tool)};
     if(span&&spanStart!==null)renderer.spanPreview=bent&&spanBend===null?null:plan;
   }
   if(tool)updateBuildQuote(n);
@@ -199,7 +203,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 canvas.addEventListener('pointerup',e=>{
   const p=local(e);pointers.delete(e.pointerId);
-  if(gesture&&!gesture.wasPinch&&(!gesture.moved||!!BUILDINGS[tool])){const n=!tool?renderer.pickObjectAt(p.x,p.y):renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
+  if(gesture&&!gesture.wasPinch&&(!gesture.moved||!!BUILDINGS[tool]||tool==='move-building')){const n=!tool?renderer.pickObjectAt(p.x,p.y):renderer.tileAt(p.x,p.y);if(n>=0&&game.tiles[n]==='building'&&tool!=='demolish'&&tool!=='move-building'){if(tool)chooseTool(null);cityUI.openBuilding(n);}else if(tool)build(n);else if(n>=0&&game.trees.has(n))openTrees(n);else if(n>=0&&isRoad(game.tiles[n]))openPanel(n);else if(n>=0&&game.tiles[n]==='building')cityUI.openBuilding(n);else{closePanel();closeSheets();renderer.selected=null;}}
   if(gesture?.moved&&!gesture.wasPinch&&['road','main','demolish','clear-trees'].includes(tool))paintTo(renderer.tileAt(p.x,p.y));
   if(!pointers.size){finishStroke();gesture=null;pinch=null;renderer.dragging=false;}else if(gesture)gesture.wasPinch=true;
 });
@@ -257,7 +261,7 @@ document.addEventListener('keydown',e=>{
 });
 window.addEventListener('resize',()=>renderer.resize());window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{save();last=performance.now();accumulator=0;});
 function frame(now){const delta=document.hidden?0:Math.min((now-last)/1000,.15);last=now;if(!document.hidden){game.flushStroke();renderer.updateCamera(delta);accumulator+=delta*playSpeed;let steps=0;while(accumulator>=B.fixedStep&&steps<B.maxFrameSteps){game.update(B.fixedStep);accumulator-=B.fixedStep;steps++;}if(steps>=B.maxFrameSteps)accumulator=Math.min(accumulator,B.fixedStep);renderer.draw(game.paused?1:accumulator/B.fixedStep);uiClock+=delta;saveClock+=delta;if(uiClock>.3){updateUI();uiClock=0;}if(saveClock>B.saveSeconds){idleSave.schedule();saveClock=0;}}requestAnimationFrame(frame);}
-cityUI=setupCityUI({getGame:()=>game,renderer,changed,toast,closeAll:()=>{if(tool)chooseTool(null);closePanel();closeSheets();renderer.selected=null;},replaceGame:data=>{game=new Simulation(data);renderer.game=game;renderer.dirty=true;configurePlannerUI();renderer.resize();renderer.center();save();updateUI();}});
+cityUI=setupCityUI({getGame:()=>game,renderer,changed,toast,closeAll:()=>{if(tool)chooseTool(null);closePanel();closeSheets();renderer.selected=null;},beginMove:node=>{movingNode=node;chooseTool('move-building');$('#build-instruction').textContent='Move property | Tap cleared destination | $50';},replaceGame:data=>{game=new Simulation(data);renderer.game=game;renderer.dirty=true;configurePlannerUI();renderer.resize();renderer.center();save();updateUI();}});
 transitUI=setupTransitUI({getGame:()=>game,chooseTool,changed,toast,closeAll:()=>{chooseTool(null);closePanel();closeSheets();}});
 tutorial=setupTutorial({getGame:()=>game,chooseTool,openCityTools:()=>{chooseTool(null);$('#build-sheet').hidden=false;category='city';for(const t of document.querySelectorAll('[data-category]')){t.classList.toggle('active',t.dataset.category===category);t.setAttribute('aria-selected',String(t.dataset.category===category));}renderBuildMenu();},openBoard:()=>cityUI.openBoard(),save:scheduleSave});
 $('#pause-city').onclick=()=>{manualPaused=!manualPaused;game.paused=manualPaused||!$('#modal').hidden;$('#pause-city').textContent=manualPaused?'▶':'Ⅱ';$('#pause-city').setAttribute('aria-label',manualPaused?'Resume city':'Pause city');updateUI();};

@@ -12,7 +12,6 @@ The live pointer/touch preview shows footprint, total price including clearing, 
 
 Validation: 129 tests, 44 syntax checks, 12 isolated Chrome checks.
 
-## Remaining phases
 ## Phase 3 - Neighborhood goals (complete)
 City development > Neighborhoods has four sequential goals in each of five districts: two connected homes, hospital coverage, 30 fresh paying visitors, then 30 seconds without jams with three local vehicles and ten fresh completed trips. Each reward can be claimed once. Progress and visitor counters persist; existing contracts/saves remain supported.
 
@@ -30,4 +29,24 @@ Nearby connected homes/businesses provide bounded passenger demand. Only complet
 
 Validation: 136 tests, 48 syntax checks, 19 isolated Chrome checks, including actual bus delivery. Tests cover invalid return routes, pause, disconnection, persistence and undo.
 
-6. Building rotation, safe relocation and city decorations; final regression and performance checks.
+## Phase 6 - City editing and final polish (complete)
+Property inspectors offer $50 relocation and $25 clockwise rotation. Full-site validation protects roads, water, trees, flyover clearances and other buildings. Relocation keeps levels, investment, paint and visitor ledgers; undo preserves later income. Approaching cars, parked visitors and park walkers must finish before a transformation or its undo. Rectangular garage homes rotate real footprints and driveways; offices rotate parking corners. Isometric roofs, doors, campus massing and park grounds follow orientation.
+
+Benches ($20), flower beds ($35) and fountain plazas ($80) occupy one cleared tile, are purely decorative, and support 60% demolition refunds, save/load and undo.
+
+Final validation: 142 Node tests; 49 application syntax checks; 33 isolated browser checks including actual pointer move/rotation, portrait/desktop layouts, saved edits restored offline and 18 underpass pixel positions. The generated Android assets pass 32 browser checks (browser service-worker offline reload is intentionally absent from the APK copy). APK contents were compared against all 49 current source/style/HTML files.
+
+The dense 3x browser benchmark with 82 buildings, initially 250 cars, a flyover, connections overlay, 10 decorations and one active transit bus measured 59.5 rAF FPS, 4.67 ms mean CPU work, 6.7 ms p95 and three frame intervals above 25 ms at 390x844, fixed DPR 1.5. These are development-browser measurements.
+
+Android v0.11.0 (version code 1100) built successfully with `assembleDebug lintDebug`: zero lint errors, three advisory warnings. No phone was installed, accessed or tested. The debug APK remains ignored by Git at `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+## Remaining owner validation
+All six implementation phases are complete. The owner will do the final real-phone gameplay, touch, thermal/battery and long-session checks. No claim of sustained phone FPS is made.
+
+## Reproduce
+- `npm test` and `npm run check`
+- `node scripts/browser-smoke.mjs` (isolated temporary Chrome profile; never uses player saves)
+- `node scripts/benchmark.mjs --minutes=60`
+- `node scripts/render-benchmark.mjs --mobile-dpr --phone-size --speed=3 --flyover --long --city-features`
+- To smoke-test bundled assets, set `TOLL_GAME_ASSETS` to the absolute `android/app/build/generated/gameAssets` directory before running the browser smoke script.
+- Android: use Android Studio JBR and the SDK containing Build Tools 34.0.0, then `./android/gradlew.bat -p android assembleDebug lintDebug --offline --console=plain`.

@@ -19,13 +19,26 @@ Gameplay is dependency-free JavaScript and Canvas. `src/` is the game source; `i
 
 ## Current project state
 
-- Latest published project version: **v0.10.5**.
-- Latest commit at the time these notes were written: `5c3e351` (`Improve frame pacing and batch construction work`). Verify `git status`, branch and remote before continuing; newer work may exist.
+- Latest project version: **v0.11.0** (Android version code 1100).
+- All six city improvement phases were implemented and pushed independently on `codex/isometric-2-5d`. Consult `git log` for exact commits and verify branch/status before continuing. Detailed behavior and checks are in `DEVELOPMENT.md`.
 - The current visual direction is an isometric 2.5D city. Preserve the established visual style and mobile layout when extending it.
 - Performance work reuses car and walker render entries, interpolates pedestrians and camera movement, avoids redundant HUD text writes, defers/coalesces autosaves while keeping lifecycle saves immediate, and batches road/tree brush graph rebuilds. Whole-stroke undo preserves income earned during construction.
 - The v0.10.5 heavy 3× desktop browser benchmark measured 59.6 rAF FPS, 5.82 ms mean CPU work, 10.4 ms p95 and three intervals over 25 ms at 390×844 CSS pixels and DPR 1.5. This is a local browser fixture, not a phone FPS guarantee.
 - Underpass visibility is deliberately handled by an explicit car redraw after flyover decks. Do not remove or reorder that pass as a casual optimization; it prevents ground cars disappearing beneath decks. The browser pixel regression checks 18 positions, including adjacent-road cutaways.
-- APK build and Android lint succeeded for v0.10.5. Do not claim a newer APK exists until it is successfully built. The owner previously asked not to install on their phone until they explicitly say it is time; browser testing is acceptable.
+- APK build and Android lint succeeded for v0.11.0 (zero errors, three advisory warnings); all 49 bundled source/style/HTML files match current root sources. Packaged game assets pass 32 browser checks. No phone installation or phone testing was performed for this release. Do not claim a newer APK exists until it is successfully built. The owner previously asked not to install on their phone until they explicitly say it is time; browser testing is acceptable.
+
+## Completed city improvement phases (v0.11.0)
+
+1. City overlays: disconnected buildings/roads, service reach, congestion and full parking.
+2. Live construction quotes: complete footprint, clearing cost, connectivity and real validation errors.
+3. Saved neighborhood goals: two connected homes, hospital coverage, 30 fresh business visitors and 30 seconds of traffic flow in each district. Each stage pays once.
+4. Bounded satisfaction effects: private demand -5% to +10%; actual business arrival bonus 0-5%; no change to posted toll or park ticket price.
+5. Bus stops and routes: 2-8 ordered stops, legal round trip, six-seat physical buses, four-second dwell, pause/refund/undo, saved lines and lifetime passengers. Actual deliveries between populated catchments yield up to 20% private-demand relief in a rolling minute. No self-paid bus toll revenue.
+6. Safe property move/rotation and saved bench/flower/fountain decorations. Active or approaching visitors must leave before edits or edit undo; relocation preserves upgrade/paint/ledgers and undo preserves subsequent receipts. Garage-home footprints and office parking corners rotate physically.
+
+Final checks: 142 Node tests; 49 syntax checks; 33 browser checks including offline restoration, real pointer move/rotation and all 18 underpass pixel positions. Feature-enabled dense 3x browser fixture: 59.5 rAF FPS, 4.67 ms mean CPU, 6.7 ms p95, fixed DPR 1.5; includes overlay, 10 decorations and an active bus route. No phone performance claim. A deterministic 60-minute simulation retained income and trips.
+
+Only the owner's final real-phone gameplay, touch and sustained-performance validation remains. Do not install on a phone until the owner explicitly requests it.
 
 ## Key gameplay behavior to preserve
 

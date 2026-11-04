@@ -1,6 +1,21 @@
-# Toll Empire · v0.10.5: smoother traffic and construction
+# Toll Empire · v0.11.0: city insights, transit and editing
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
+
+## v0.11.0 city improvement release
+
+All six phases are complete; see [DEVELOPMENT.md](DEVELOPMENT.md) for rules, validation and reproducible checks.
+
+- Build menu > **City overlays** shows isolated roads/buildings, congestion, hospital/police/university/park coverage and live parking occupancy. Service reach follows road distance.
+- Construction previews show full footprints, total clearing/build costs, connectivity and actual placement errors.
+- City development > **Neighborhoods** offers four sequential goals in each district: homes, hospital coverage, fresh business visitors and sustained traffic flow. Rewards and progress persist.
+- Mayor satisfaction changes private demand by -5% to +10% and grants up to 5% on real business arrivals. Posted toll and park ticket prices remain exact. The mayor report explains both effects.
+- Build menu > **Public transport** links $100 stops into $350 routes. Choose 2-8 stops in travel order; provide legal U-turn points at end stops or a road loop. Each of up to four routes has one six-seat bus with four-second stops. Actual deliveries between populated stop catchments reduce private demand by up to 20%; no idle transit income is created.
+- Building inspectors offer **Move property** ($50) and **Rotate 90 degrees** ($25). Moves preserve upgrades, paint and visitor totals; active visits must finish first. Destinations require empty, cleared land. Benches, flower beds and fountains add undoable, saved decorations.
+
+Existing saves keep their storage key and migrate with empty transit/decoration data and fresh neighborhood goals. Validation: 142 tests, 49 syntax checks, 33 isolated browser checks including offline save restoration and 18 underpass pixel checks. The feature-enabled 3x dense browser benchmark measured 59.5 rAF FPS at fixed DPR 1.5; phone performance remains untested for this release.
+
+Android v0.11.0 / code 1100 debug APK built and linted (zero errors, three advisory warnings); generated assets also passed browser smoke checks. No device installation or testing was performed. APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ## v0.10.5 frame pacing and construction
 

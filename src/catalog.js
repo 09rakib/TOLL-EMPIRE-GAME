@@ -1,6 +1,8 @@
+import {DECORATIONS} from './city-editing.js';
 import {B} from './balance.js';
 import {PROJECTS} from './projects.js';
 export const catalog=[
+  ...Object.entries(DECORATIONS).map(([id,d])=>({id,name:d.name,icon:'tree',category:'city',cost:d.price,unit:'1 tile | decoration',hint:'Purely decorative. Place on cleared grass; Demolish refunds 60% and Undo restores it.'})),
   {id:'bus-stop',name:'Bus stop',icon:'car',category:'traffic',plannerOnly:true,cost:100,unit:'/ stop',hint:'Place on a connected road. Build menu > Public transport links stops in travel order; end stops need a legal U-turn or a road loop.'},
   {id:'uturn',name:'U-turn point',icon:'undo',category:'traffic',cost:60,unit:'/ point',hint:'Mark a road where vehicles may reverse direction. Without this point they continue forward, find another legal route or wait. Demolish removes the marker first.'},
   ...[['parking','Parking area',500,'office'],['police','Police station',1200,'office'],['supermarket','Supermarket',1100,'shop'],['university','University',1800,'office']].map(([id,name,cost,icon])=>({id,name,cost,icon,category:'city',plannerOnly:true,unit:'4 × 4 · 16 tiles',hint:name+' · five visual upgrade levels. Tap the top-left of a 4 × 4 site. Build first; connect a city road later to open.'})),

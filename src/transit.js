@@ -2,7 +2,7 @@ import {B} from './balance.js';
 import {isRoad} from './world.js';
 export const STOP_PRICE=100,LINE_PRICE=350;
 export const emptyTransit=()=>({stops:[],lines:[],nextId:1,passengers:0});
-export function transitValid(t){return !!t&&Array.isArray(t.stops)&&t.stops.length<=24&&new Set(t.stops).size===t.stops.length&&t.stops.every(n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset)&&Array.isArray(t.lines)&&t.lines.length<=4&&Number.isInteger(t.nextId)&&t.nextId>0&&Number.isFinite(t.passengers)&&t.passengers>=0&&new Set(t.lines.map(l=>l.id)).size===t.lines.length&&t.lines.every(l=>Number.isInteger(l.id)&&l.id>0&&l.id<t.nextId&&typeof l.paused==='boolean'&&Array.isArray(l.stops)&&l.stops.length>=2&&l.stops.length<=8&&new Set(l.stops).size===l.stops.length&&l.stops.every(n=>t.stops.includes(n)));}
+export function transitValid(t){return !!t&&Array.isArray(t.stops)&&t.stops.length<=24&&new Set(t.stops).size===t.stops.length&&t.stops.every(n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset)&&Array.isArray(t.lines)&&t.lines.length<=4&&Number.isInteger(t.nextId)&&t.nextId>0&&Number.isFinite(t.passengers)&&t.passengers>=0&&t.lines.every(l=>l&&typeof l==='object')&&new Set(t.lines.map(l=>l.id)).size===t.lines.length&&t.lines.every(l=>Number.isInteger(l.id)&&l.id>0&&l.id<t.nextId&&typeof l.paused==='boolean'&&Array.isArray(l.stops)&&l.stops.length>=2&&l.stops.length<=8&&new Set(l.stops).size===l.stops.length&&l.stops.every(n=>t.stops.includes(n)));}
 export const transitMethods={
  validateStop(n){if(this.mode!=='planner')return 'Bus services are available in Planner cities.';if(!isRoad(this.tiles[n])||!this.cityConnected.has(n))return 'Place the stop on a city-connected ground road.';if(this.transit.stops.includes(n))return 'There is already a bus stop here.';if(this.transit.stops.length>=24)return 'The city supports up to 24 bus stops.';if(this.coins<STOP_PRICE)return 'A bus stop costs 100 coins.';return null;},
  buildStop(n){const error=this.validateStop(n);if(error)return error;const before=this.actionSnapshot();this.coins-=STOP_PRICE;this.transit.stops.push(n);this.record(before);this.rebuild();return null;},
@@ -22,16 +22,17 @@ export const transitMethods={
  updateTransit(){
    if(this.mode!=='planner')return;this.transitClock=(this.transitClock||0)+B.fixedStep;if(this.transitClock<1)return;this.transitClock=0;
    for(const line of this.transit.lines){if(line.paused||this.cars.some(c=>c.transitId===line.id)||this.cars.length>=(this.settings.lowPower?B.lowPowerCars:B.maxCars)||this.planTransit(line.stops))continue;
-     if(this.addPlannerCar(line.stops[0],line.stops[1],null,'bus')){const car=this.cars.at(-1);car.transitId=line.id;car.transitNext=1;car.transitDwellUntil=null;car.transitRiders=this.transitDemandAt(line.stops[0]);car.color='#3a9dab';}
+     if(this.addPlannerCar(line.stops[0],line.stops[1],null,'bus')){const car=this.cars.at(-1);car.transitId=line.id;car.transitNext=1;car.transitDwellUntil=null;car.transitRiders=Math.min(this.transitDemandAt(line.stops[0]),this.transitDemandAt(line.stops[1]));car.color='#3a9dab';}
    }
  },
  advanceTransitStop(car,dt){
    const line=this.transit.lines.find(l=>l.id===car.transitId),current=car.route[car.index];car.age+=dt;
    if(!line){car.transitId=null;car.transitRiders=0;if(!this.continueToExit(car))car.stranded=true;return;}
+   if(current!==line.stops[car.transitNext]||!this.cityConnected.has(current)||!isRoad(this.tiles[current]))return;
    if(car.transitDwellUntil===null){const count=car.transitRiders||0;this.transit.passengers+=count;this.transitArrivals??=[];if(count)this.transitArrivals.push({time:this.time,count});car.transitRiders=0;car.transitDwellUntil=this.time+4;}
    if(line.paused||this.time<car.transitDwellUntil||!this.cityConnected.has(current)||!isRoad(this.tiles[current]))return;
    const next=(car.transitNext+1)%line.stops.length,destination=line.stops[next];if(!this.cityConnected.has(destination)||!isRoad(this.tiles[destination]))return;
    const route=this.route(current,destination,.5,car.heading);if(!route||route.length<2)return;
-   car.transitRiders=this.transitDemandAt(current);car.transitNext=next;car.transitDwellUntil=null;car.route=route;car.index=0;car.progress=0;car.destination=destination;car.revision=this.revision;car.exiting=false;car.stranded=false;
+   car.transitRiders=Math.min(this.transitDemandAt(current),this.transitDemandAt(destination));car.transitNext=next;car.transitDwellUntil=null;car.route=route;car.index=0;car.progress=0;car.destination=destination;car.revision=this.revision;car.exiting=false;car.stranded=false;
  },
 };

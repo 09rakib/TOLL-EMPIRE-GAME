@@ -1,3 +1,4 @@
+import {DECORATIONS} from './city-editing.js';
 import {transitValid} from './transit.js';
 import {B} from './balance.js';
 import {createCampaign,createSettings} from './campaign.js';
@@ -7,7 +8,7 @@ import {updateRiver} from './river.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
 let lastValidatedRaw=null;
-export function serialize(game){return {transit:game.transit,version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
+export function serialize(game){return {decorations:game.decorations,transit:game.transit,version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
 export function migrate(data){
   if(!data||![1,2,3].includes(data.version))return null;
   if(data.version===1)data={...data,version:2,tolls:data.tolls?.map(([n,t])=>[n,{...t,level:1}]),flyovers:[],bridges:[],signals:[],upgrades:{}};
@@ -24,15 +25,18 @@ export function migrate(data){
 export function validateSave(data){
   if(!data||!Array.isArray(data.tiles)||data.tiles.length!==B.layerOffset||!Number.isFinite(data.coins)||data.coins<0||!Array.isArray(data.buildings))return false;
   if(data.transit!==undefined&&!transitValid(data.transit))return false;
-  const legal=new Set(['grass','river','road','bridge','building','mainRoad','roundabout']);
+  const legal=new Set(['grass','river','road','bridge','building','mainRoad','roundabout','decoration']);
   const node=n=>Number.isInteger(n)&&n>=0&&n<B.layerOffset;
   if(data.uturns!==undefined&&(!Array.isArray(data.uturns)||new Set(data.uturns).size!==data.uturns.length||data.uturns.some(n=>!node(n)||!['road','mainRoad','bridge','roundabout'].includes(data.tiles[n]))))return false;
   if(data.trees!==undefined&&(!Array.isArray(data.trees)||data.trees.length>B.layerOffset||new Set(data.trees).size!==data.trees.length||data.trees.some(n=>!node(n)||data.tiles[n]!=='grass')))return false;
   if(data.tiles.some(t=>!legal.has(t))||data.buildings.some(b=>!b||!Number.isInteger(b.x)||!Number.isInteger(b.y)||b.x<0||b.y<0||b.x>=B.size||b.y>=B.size||!Number.isInteger(b.type)||b.type<0||b.type>5))return false;
   if(data.buildings.some(b=>b.level!==undefined&&(!Number.isInteger(b.level)||b.level<1||b.level>5)||b.paint!==undefined&&(!Number.isInteger(b.paint)||b.paint<0||b.paint>4)||b.variant!==undefined&&(!Number.isInteger(b.variant)||b.variant<0||b.variant>4)||b.investment!==undefined&&(!Number.isFinite(b.investment)||b.investment<0)))return false;
   if(data.buildings.some(b=>b.footprint!==undefined&&(![1,2,4].includes(b.footprint)||b.footprint===4&&(![1,3,4].includes(b.type)||b.x+4>B.size||b.y+4>B.size)||b.footprint===2&&(![1,2].includes(b.type)||b.x+2>B.size||b.y+2>B.size||b.type===2&&(!Number.isInteger(b.parkingCorner)||b.parkingCorner<0||b.parkingCorner>3)))))return false;
-  if(data.buildings.some(b=>(b.width!==undefined||b.height!==undefined)&&(b.kind!=='garage-home'||b.type!==0||b.width!==2||b.height!==1||b.x+2>B.size)))return false;
-  const occupied=new Set();for(const b of data.buildings)for(const n of plotCells(b)){if(occupied.has(n)||((b.footprint||1)>1||b.width>1)&&data.tiles[n]!=='building')return false;occupied.add(n);}
+  if(data.buildings.some(b=>b.rotation!==undefined&&(!Number.isInteger(b.rotation)||b.rotation<0||b.rotation>3)))return false;
+  if(data.buildings.some(b=>(b.width!==undefined||b.height!==undefined)&&(b.kind!=='garage-home'||b.type!==0||b.width!==((b.rotation||0)%2?1:2)||b.height!==((b.rotation||0)%2?2:1)||b.x+b.width>B.size||b.y+b.height>B.size)))return false;
+  if(data.decorations!==undefined&&(!Array.isArray(data.decorations)||data.decorations.length>B.layerOffset||new Set(data.decorations.map(d=>d?.node)).size!==data.decorations.length||data.decorations.some(d=>!d||!node(d.node)||!DECORATIONS[d.kind]||data.tiles[d.node]!=='decoration'||d.investment!==DECORATIONS[d.kind].price)))return false;
+  if(data.tiles.some((t,n)=>t==='decoration'&&!data.decorations?.some(d=>d.node===n)))return false;
+  const occupied=new Set();for(const b of data.buildings)for(const n of plotCells(b)){if(occupied.has(n)||((b.footprint||1)>1||b.width>1||b.height>1)&&data.tiles[n]!=='building')return false;occupied.add(n);}
   if(data.buildings.some(b=>b.project&&(!PROJECTS[b.project]||!Number.isInteger(b.projectStage)||b.projectStage<0||b.projectStage>2||!b.projectBaseline||!Number.isFinite(b.projectBaseline.trips)||!Number.isFinite(b.projectBaseline.served))))return false;
   const projects=data.buildings.filter(b=>b.project).map(b=>b.project);if(new Set(projects).size!==projects.length)return false;
   if(!Array.isArray(data.tolls)||data.tolls.some(entry=>!Array.isArray(entry)||!node(entry[0])||!entry[1]||!Number.isInteger(entry[1].price)||entry[1].price<0||entry[1].price>(data.worldMode==='planner'?B.boothTollLimits[entry[1].level-1]:B.maxToll)||!Number.isInteger(entry[1].level)||entry[1].level<1||entry[1].level>5))return false;

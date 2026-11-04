@@ -3,8 +3,8 @@ import {plotPerimeter,plotWidth,plotHeight} from './plots.js';
 import {B} from './balance.js';
 import {id,point} from './world.js';
 export const hasParking=b=>b?.kind==='parking'||b?.kind==='garage-home'||b?.type===2&&b?.footprint===2;
-export function parkingCell(b){if(b.kind==='garage-home')return {x:b.x+1,y:b.y};const corner=b.parkingCorner??2;return {x:b.x+([1,2].includes(corner)?1:0),y:b.y+(corner>=2?1:0)};}
-export function parkingRoads(b){if(b.kind==='parking')return plotPerimeter(b);const p=parkingCell(b),candidates=[[p.x-1,p.y],[p.x+1,p.y],[p.x,p.y-1],[p.x,p.y+1]];return candidates.filter(([x,y])=>x>=0&&y>=0&&x<B.size&&y<B.size&&!(x>=b.x&&x<b.x+(b.width||2)&&y>=b.y&&y<b.y+(b.height||2))).map(([x,y])=>id(x,y));}
+export function parkingCell(b){if(b.kind==='garage-home'){const offsets=[[1,0],[0,1],[0,0],[0,0]],p=offsets[b.rotation||0];return {x:b.x+p[0],y:b.y+p[1]};}const corner=b.parkingCorner??2;return {x:b.x+([1,2].includes(corner)?1:0),y:b.y+(corner>=2?1:0)};}
+export function parkingRoads(b){if(b.kind==='parking')return plotPerimeter(b);const p=parkingCell(b),candidates=[[p.x-1,p.y],[p.x+1,p.y],[p.x,p.y-1],[p.x,p.y+1]];return candidates.filter(([x,y])=>x>=0&&y>=0&&x<B.size&&y<B.size&&!(x>=b.x&&x<b.x+plotWidth(b)&&y>=b.y&&y<b.y+plotHeight(b))).map(([x,y])=>id(x,y));}
 export function chooseParkingCorner(plot,connected){for(const corner of [2,3,1,0]){const candidate={...plot,parkingCorner:corner};if(parkingRoads(candidate).some(n=>connected.has(n)))return corner;}return 2;}
 export function driveway(b,entrance,slot){
   if(b.kind==='parking'){const t=B.tile,r=point(entrance),x=b.x*t,y=b.y*t,p=parkingBay(b,slot);const gate=[Math.max(x+8,Math.min(x+216,(r.x+.5)*t)),Math.max(y+8,Math.min(y+216,(r.y+.5)*t))];return [gate,[x+8,gate[1]],[x+8,p.y+30],[p.x,p.y+30],[p.x,p.y]];}
