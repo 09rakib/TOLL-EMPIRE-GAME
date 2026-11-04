@@ -4,7 +4,7 @@ import {roadHeading} from './pathfinder.js';
 export const drivingMethods={
  trafficNode(n){return this.rampNodes?.has(n)?n%B.layerOffset:n;},
  carLaneProgress(car){return this.trafficNode(car.route[car.index])===this.trafficNode(car.route[car.index+1])?0:car.progress;},
- removeUTurn(n){if(!this.uturns.has(n))return 'This road has no U-turn point.';const before=this.snapshot();this.uturns.delete(n);this.coins+=Math.round(60*B.refund);this.record(before);this.rebuild();return null;},
+ removeUTurn(n){if(!this.uturns.has(n))return 'This road has no U-turn point.';const before=this.actionSnapshot();this.uturns.delete(n);this.coins+=Math.round(60*B.refund);this.record(before);this.rebuild();return null;},
  prepareLeaders(){
   this.laneBuckets??=new Map();this.activeLanes??=[];this.laneHeads??=new Map();this.parkingSlots??=new Map();for(const lane of this.activeLanes)lane.length=0;this.activeLanes.length=0;this.laneHeads.clear();for(const slots of this.parkingSlots.values())slots.clear();
   for(const car of this.cars){car.leader=null;if(car.done)continue;if(Number.isInteger(car.parkingSlot)&&car.parkingOffice!==null){if(!this.parkingSlots.has(car.parkingOffice))this.parkingSlots.set(car.parkingOffice,new Set());this.parkingSlots.get(car.parkingOffice).add(car.parkingSlot);}if(car.parkingPhase&&car.parkingPhase!=='waiting')continue;

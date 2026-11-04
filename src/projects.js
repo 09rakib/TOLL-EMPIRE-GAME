@@ -24,7 +24,7 @@ export const projectMethods={
   },
   buildProject(n,kind){
     const error=this.validateProject(n,kind);if(error)return error;
-    const spec=PROJECTS[kind],before=this.snapshot();this.coins-=spec.costs[0];this.tiles[n]='building';
+    const spec=PROJECTS[kind],before=this.actionSnapshot();this.coins-=spec.costs[0];this.tiles[n]='building';
     this.buildings.push({x:n%B.size,y:Math.floor(n/B.size),type:2,variant:0,level:1,managed:true,paint:0,investment:spec.costs[0],project:kind,projectStage:0,projectBaseline:this.metrics()});
     this.record(before);this.rebuild();return null;
   },
@@ -34,7 +34,7 @@ export const projectMethods={
     const status=projectStatus(this,b);if(status.complete)return 'This landmark is already operational.';
     if(!status.ready)return 'Complete this stage’s traffic and development objectives first.';
     if(this.coins<status.cost)return `The next stage costs ${status.cost} coins.`;
-    const before=this.snapshot();this.coins-=status.cost;b.investment+=status.cost;b.projectStage++;b.projectBaseline=this.metrics();
+    const before=this.actionSnapshot();this.coins-=status.cost;b.investment+=status.cost;b.projectStage++;b.projectBaseline=this.metrics();
     this.record(before);this.rebuild();return null;
   },
 };

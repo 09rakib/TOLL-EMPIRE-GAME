@@ -35,7 +35,7 @@ export const pedestrianMethods={
     if(this.walkClock>2){this.walkClock=0;this.spawnWalker();}
     for(let i=this.walkers.length-1;i>=0;i--){const w=this.walkers[i],park=w.park===null?null:this.buildingAt(w.park);
       if(w.topology!==this.walkTopology||w.nodes.some(n=>!this.graph.has(n))||(w.park!==null&&(!park||this.buildingEntrance(park)===null))){this.walkers.splice(i,1);continue;}
-      let remaining=w.speed*dt;
+      w.prevX=w.x;w.prevY=w.y;w.prevPhase=w.phase;let remaining=w.speed*dt;
       while(remaining>0&&w.index<w.path.length-1){const a=w.path[w.index],b=w.path[w.index+1],length=Math.hypot(b[0]-a[0],b[1]-a[1]);
         if(length<.01){w.index++;w.distance=0;continue;}const step=Math.min(remaining,length-w.distance);w.distance+=step;remaining-=step;
         const progress=w.distance/length;w.x=a[0]+(b[0]-a[0])*progress;w.y=a[1]+(b[1]-a[1])*progress;w.angle=Math.atan2(b[1]-a[1],b[0]-a[0]);w.phase+=step*.22;

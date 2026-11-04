@@ -1,3 +1,4 @@
+import {idleTask} from './frame-work.js';
 import {citySatisfaction} from './satisfaction.js';
 import {B} from './balance.js';
 import {isRoad,point} from './world.js';
@@ -27,10 +28,13 @@ let treeNode=null,resumeAfterClear=null,treeArea=[];
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
 let tool=null,selected=null,spanStart=null,spanBend=null,bentFlyover=false,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null;
+function hudText(selector,value){const node=$(selector),text=String(value);if(node.textContent!==text)node.textContent=text;}
 const money=n=>Math.floor(n).toLocaleString('en-US'),time=n=>n?`${n.toFixed(1)}s`:'—';
 function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4500);}
-function save(){clearTimeout(saveTimer);saveTimer=null;const ok=storage.save(game);$('#save-label').textContent=ok?'Progress autosaved':'Storage unavailable';return ok;}
-function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(save,350);}
+let idleSave=null;
+function save(){idleSave?.cancel();clearTimeout(saveTimer);saveTimer=null;const ok=storage.save(game);$('#save-label').textContent=ok?'Progress autosaved':'Storage unavailable';return ok;}
+idleSave=idleTask(save);
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>idleSave.schedule(),350);}
 function changed(){renderer.dirty=true;scheduleSave();updateUI();}
 function closeSheets(){for(const id of ['build-sheet','shop-sheet','operations-sheet','custom-sheet','building-panel','tree-panel','satisfaction-panel'])$('#'+id).hidden=true;}
 function chooseTool(next){
@@ -122,11 +126,11 @@ $('#satisfaction').onclick=()=>{chooseTool(null);closeSheets();closePanel();$('#
 $('#close-satisfaction').onclick=()=>$('#satisfaction-panel').hidden=true;
 let moodCache=null;
 function updateUI(){
-  const wallTime=performance.now();if(!moodCache||moodCache.game!==game||moodCache.revision!==game.revision||wallTime-moodCache.time>=1000)moodCache={game,revision:game.revision,time:wallTime,value:citySatisfaction(game)};const mood=moodCache.value;$('#satisfaction').textContent='☺ '+mood.score+'%';$('#satisfaction').setAttribute('aria-label','Mayor satisfaction '+mood.score+' percent. Open city report');if(!$('#satisfaction-panel').hidden)renderSatisfaction(mood);
-  $('#coins').textContent=money(game.coins);$('#income').textContent=money(game.totalIncome);
-  $('#traffic-count').textContent=`${game.cars.length} cars on the road`;
-  $('#zoom-label').textContent=`${Math.round(renderer.camera.zoom*100)}%`;
-  $('#running-status').textContent=game.paused?'City paused':'All systems go';$('#undo').disabled=!game.undoStack.length;
+  const wallTime=performance.now();if(!moodCache||moodCache.game!==game||moodCache.revision!==game.revision||wallTime-moodCache.time>=1000)moodCache={game,revision:game.revision,time:wallTime,value:citySatisfaction(game)};const mood=moodCache.value;hudText('#satisfaction','☺ '+mood.score+'%');$('#satisfaction').setAttribute('aria-label','Mayor satisfaction '+mood.score+' percent. Open city report');if(!$('#satisfaction-panel').hidden)renderSatisfaction(mood);
+  hudText('#coins',money(game.coins));hudText('#income',money(game.totalIncome));
+  hudText('#traffic-count',`${game.cars.length} cars on the road`);
+  hudText('#zoom-label',`${Math.round(renderer.camera.zoom*100)}%`);
+  hudText('#running-status',game.paused?'City paused':'All systems go');$('#undo').disabled=!game.undoStack.length;
   if(!$('#shop-sheet').hidden)for(const button of document.querySelectorAll('[data-upgrade]')){const key=button.dataset.upgrade;button.disabled=upgradeTypes[key].locked||game.upgrades[key]>=B.upgradeMaxLevel||game.coins<game.upgradeCost(key);}
   if(!$('#build-sheet').hidden)for(const button of document.querySelectorAll('[data-pick-tool]')){const reason=itemUnavailable(catalog.find(i=>i.id===button.dataset.pickTool));button.disabled=!!reason;button.classList.toggle('unaffordable',!!reason);button.querySelector('.afford-label').hidden=!reason;button.querySelector('.afford-label').textContent=reason;}
   updatePanel();updateTrees();cityUI?.update();tutorial?.update();
@@ -182,9 +186,9 @@ canvas.addEventListener('pointermove',e=>{
   if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,p);
   if(pointers.size>=2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);if(pinch&&pinch.distance>0)renderer.zoom((dist/pinch.distance-1)*renderer.camera.zoom,(a.x+b.x)/2,(a.y+b.y)/2,true);pinch={distance:dist};if(gesture){gesture.moved=true;gesture.wasPinch=true;}return;}
   if(!gesture||gesture.wasPinch)return;
-  const dx=p.x-gesture.x,dy=p.y-gesture.y;
+  const dx=p.x-gesture.x,dy=p.y-gesture.y,moveDt=Math.max(1/240,Math.min(1/15,(e.timeStamp-(gesture.lastMoveTime??e.timeStamp-33.3))/1000));gesture.lastMoveTime=e.timeStamp;
   if(Math.hypot(p.x-gesture.startX,p.y-gesture.startY)>5)gesture.moved=true;
-  if(gesture.moved){if(['road','main','demolish','clear-trees'].includes(tool)){if(n!==lastBuilt)paintTo(n);}else if(!tool||tool==='flyover'||tool==='bridge'){renderer.pan(dx,dy);}}
+  if(gesture.moved){if(['road','main','demolish','clear-trees'].includes(tool)){if(n!==lastBuilt)paintTo(n);}else if(!tool||tool==='flyover'||tool==='bridge'){renderer.pan(dx,dy,moveDt);}}
   gesture.x=p.x;gesture.y=p.y;
 });
 canvas.addEventListener('pointerup',e=>{
@@ -242,7 +246,7 @@ document.addEventListener('keydown',e=>{
   if(e.key.toLowerCase()==='b')cityUI.openBoard();if(e.key.toLowerCase()==='c')cityUI.openCustom();if(e.code==='Space'&&!e.target.matches('button')){e.preventDefault();$('#pause-city').click();}
 });
 window.addEventListener('resize',()=>renderer.resize());window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{save();last=performance.now();accumulator=0;});
-function frame(now){const delta=document.hidden?0:Math.min((now-last)/1000,.15);last=now;if(!document.hidden){renderer.updateCamera(delta);accumulator+=delta*playSpeed;let steps=0;while(accumulator>=B.fixedStep&&steps<B.maxFrameSteps){game.update(B.fixedStep);accumulator-=B.fixedStep;steps++;}if(steps>=B.maxFrameSteps)accumulator=Math.min(accumulator,B.fixedStep);renderer.draw(game.paused?1:accumulator/B.fixedStep);uiClock+=delta;saveClock+=delta;if(uiClock>.3){updateUI();uiClock=0;}if(saveClock>B.saveSeconds){save();saveClock=0;}}requestAnimationFrame(frame);}
+function frame(now){const delta=document.hidden?0:Math.min((now-last)/1000,.15);last=now;if(!document.hidden){game.flushStroke();renderer.updateCamera(delta);accumulator+=delta*playSpeed;let steps=0;while(accumulator>=B.fixedStep&&steps<B.maxFrameSteps){game.update(B.fixedStep);accumulator-=B.fixedStep;steps++;}if(steps>=B.maxFrameSteps)accumulator=Math.min(accumulator,B.fixedStep);renderer.draw(game.paused?1:accumulator/B.fixedStep);uiClock+=delta;saveClock+=delta;if(uiClock>.3){updateUI();uiClock=0;}if(saveClock>B.saveSeconds){idleSave.schedule();saveClock=0;}}requestAnimationFrame(frame);}
 cityUI=setupCityUI({getGame:()=>game,renderer,changed,toast,closeAll:()=>{if(tool)chooseTool(null);closePanel();closeSheets();renderer.selected=null;},replaceGame:data=>{game=new Simulation(data);renderer.game=game;renderer.dirty=true;configurePlannerUI();renderer.resize();renderer.center();save();updateUI();}});
 tutorial=setupTutorial({getGame:()=>game,chooseTool,openCityTools:()=>{chooseTool(null);$('#build-sheet').hidden=false;category='city';for(const t of document.querySelectorAll('[data-category]')){t.classList.toggle('active',t.dataset.category===category);t.setAttribute('aria-selected',String(t.dataset.category===category));}renderBuildMenu();},openBoard:()=>cityUI.openBoard(),save:scheduleSave});
 $('#pause-city').onclick=()=>{manualPaused=!manualPaused;game.paused=manualPaused||!$('#modal').hidden;$('#pause-city').textContent=manualPaused?'▶':'Ⅱ';$('#pause-city').setAttribute('aria-label',manualPaused?'Resume city':'Pause city');updateUI();};

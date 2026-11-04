@@ -1,0 +1,3 @@
+// Coalesce saves and keep storage work out of the animation callback.
+export function idleTask(run,env=globalThis){let token=null,kind=null;const cancel=()=>{if(token===null)return;if(kind==='idle')env.cancelIdleCallback(token);else env.clearTimeout(token);token=null;};return {schedule(){if(token!==null)return;const callback=()=>{token=null;run();};if(env.requestIdleCallback){kind='idle';token=env.requestIdleCallback(callback,{timeout:1200});}else{kind='timer';token=env.setTimeout(callback,0);}},cancel,flush(){cancel();run();},get pending(){return token!==null;}};}
+export function interpolated(previous,current,alpha){return (previous??current)+(current-(previous??current))*alpha;}

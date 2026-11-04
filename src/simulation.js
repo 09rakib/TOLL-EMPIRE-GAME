@@ -127,7 +127,7 @@ export class Simulation {
     }
   }
   update(dt){
-    if(this.paused)return;
+    this.flushStroke();if(this.paused)return;
     this.time+=dt;this.spawnClock+=dt;this.replanClock+=dt;
     this.queueCounts??=new Map();this.queueCounts.clear();this.density.clear();for(const c of this.cars){if(c.waitingNode!==null&&c.waitingNode!==undefined)this.queueCounts.set(c.waitingNode,(this.queueCounts.get(c.waitingNode)||0)+1);if(c.parkingPhase&&c.parkingPhase!=='waiting')continue;const n=c.waitingNode??c.route[c.index];this.density.set(n,(this.density.get(n)||0)+1);}
     const event=this.campaign.event?.status==='active'?this.eventSpec():null;
@@ -153,15 +153,18 @@ export class Simulation {
   get income(){return this.tracker.income;}
   stats(node){return this.tracker.stats(node,this.time);}
   snapshot(){return {uturns:[...this.uturns],tiles:[...this.tiles],trees:[...this.trees],buildings:structuredClone(this.buildings),tolls:structuredClone([...this.tolls]),flyovers:structuredClone(this.flyovers),bridges:structuredClone(this.bridges),signals:[...this.signals],coins:this.coins};}
+  actionSnapshot(){return this.stroke?.entry?{coins:this.coins}:this.snapshot();}
+  flushStroke(){if(this.stroke?.needsRebuild){this.stroke.needsRebuild=false;this.rebuild(true);}}
   beginStroke(tool){this.endStroke();this.stroke={tool,entry:null,actions:0};}
-  endStroke(){const result=this.stroke;this.stroke=null;return result;}
+  endStroke(){const result=this.stroke;if(result){this.flushStroke();if(result.entry)result.entry.after=this.snapshot();}this.stroke=null;return result;}
   record(before){
-    const delta=this.coins-before.coins,after=this.snapshot();
-    if(this.stroke?.entry){this.stroke.entry.cashDelta+=delta;this.stroke.entry.after=after;this.stroke.actions++;return;}
-    before.cashDelta=delta;before.after=after;this.undoStack.push(before);if(this.undoStack.length>B.undoLimit)this.undoStack.shift();
+    const delta=this.coins-before.coins;
+    if(this.stroke?.entry){this.stroke.entry.cashDelta+=delta;this.stroke.actions++;return;}
+    before.cashDelta=delta;before.after=this.stroke?null:this.snapshot();this.undoStack.push(before);if(this.undoStack.length>B.undoLimit)this.undoStack.shift();
     if(this.stroke){this.stroke.entry=before;this.stroke.actions=1;}
   }
-  rebuild(){
+  rebuild(force=false){
+    if(this.stroke&&!force){this.stroke.needsRebuild=true;return;}
     this.rampNodes=new Set(this.flyovers.flatMap(s=>[s.nodes[0]+B.layerOffset,s.nodes.at(-1)+B.layerOffset]));this.graph=graphFrom(this.tiles,this.flyovers);this.revision++;
     const signature=[...this.graph.keys()].filter(n=>n<B.layerOffset).join(',');if(signature!==this.walkTopologySignature){this.walkTopology++;this.walkTopologySignature=signature;}
     this.refreshDevelopment();
@@ -206,7 +209,7 @@ export class Simulation {
     if(!isRoad(this.tiles[n]))return 'Select a road to remove.';
     if(this.endpoints.includes(n))return 'Keep the city entrance connected.';
     if(this.tiles[n]==='bridge'||this.flyovers.some(s=>s.nodes.includes(n))||this.bridges.some(s=>s.nodes.includes(n)))return 'Remove this bridge or flyover with the Demolish tool first.';
-    const before=this.snapshot(),refund=Math.round(this.roadRemovalCost(n)*B.refund);
+    const before=this.actionSnapshot(),refund=Math.round(this.roadRemovalCost(n)*B.refund);
     this.tolls.delete(n);this.signals.delete(n);this.uturns.delete(n);this.tiles[n]='grass';this.coins+=refund;this.record(before);this.rebuild();return null;
   }
   buildCost(tool){return {road:B.roadPrice,main:B.mainPrice,toll:B.tollPrice,signal:B.signalPrice,roundabout:B.roundaboutPrice,uturn:60}[tool]||0;}
@@ -248,7 +251,7 @@ export class Simulation {
     if(BUILDINGS[tool])return this.buildBuilding(n,tool);
     if(tool==='demolish')return this.demolish(n);
     const error=this.validate(n,tool);if(error)return error;
-    const before=this.snapshot();this.coins-=this.buildCost(tool);
+    const before=this.actionSnapshot();this.coins-=this.buildCost(tool);
     if(tool==='uturn')this.uturns.add(n);
     else if(tool==='toll')this.tolls.set(n,{price:B.initialToll,level:1,baseline:this.stats(n),alternativeBefore:this.alternativeStats(n)});
     else if(tool==='signal')this.signals.add(n);
@@ -278,7 +281,7 @@ export class Simulation {
   }
   buildSpan(start,end,tool){
     const plan=this.planSpan(start,end,tool);if(plan.error)return plan.error;
-    const before=this.snapshot();this.coins-=plan.cost;
+    const before=this.actionSnapshot();this.coins-=plan.cost;
     if(tool==='flyover')this.flyovers.push(prepareSideRamps({nodes:plan.nodes,cost:plan.cost},this.tiles,this.trees,new Set(this.flyovers.flatMap(s=>[...s.nodes,...(s.rampClearance||[])]))));
     else{for(const n of plan.nodes)this.tiles[n]=this.tiles[n]==='river'?'bridge':isRoad(this.tiles[n])?this.tiles[n]:'road';this.bridges.push({nodes:plan.nodes,cost:plan.cost});}
     this.record(before);this.rebuild();return null;
@@ -302,11 +305,11 @@ export class Simulation {
     if(nodes.slice(1,-1).some(n=>this.tiles[n]!=='river')||this.trees.has(end))return {error:'Both bridge legs must stay over water. Clear the landing first.'};
     const cost=(nodes.length-2)*B.bridgePrice+(this.tiles[end]==='grass'?B.roadPrice:0);return {nodes,cost,bent:true,error:this.coins<cost?'This bridge costs '+cost+' coins.':null};
   }
-  buildBentBridge(start,bend,end){const plan=this.planBentBridge(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;for(const n of plan.nodes)this.tiles[n]=this.tiles[n]==='river'?'bridge':isRoad(this.tiles[n])?this.tiles[n]:'road';this.bridges.push({nodes:plan.nodes,cost:plan.cost,bent:true});this.record(before);this.rebuild();return null;}
-  buildBentFlyover(start,bend,end){const plan=this.planBentFlyover(start,bend,end);if(plan.error)return plan.error;const before=this.snapshot();this.coins-=plan.cost;this.flyovers.push(prepareSideRamps({nodes:plan.nodes,cost:plan.cost,bent:true},this.tiles,this.trees,new Set(this.flyovers.flatMap(s=>[...s.nodes,...(s.rampClearance||[])]))));this.record(before);this.rebuild();return null;}
+  buildBentBridge(start,bend,end){const plan=this.planBentBridge(start,bend,end);if(plan.error)return plan.error;const before=this.actionSnapshot();this.coins-=plan.cost;for(const n of plan.nodes)this.tiles[n]=this.tiles[n]==='river'?'bridge':isRoad(this.tiles[n])?this.tiles[n]:'road';this.bridges.push({nodes:plan.nodes,cost:plan.cost,bent:true});this.record(before);this.rebuild();return null;}
+  buildBentFlyover(start,bend,end){const plan=this.planBentFlyover(start,bend,end);if(plan.error)return plan.error;const before=this.actionSnapshot();this.coins-=plan.cost;this.flyovers.push(prepareSideRamps({nodes:plan.nodes,cost:plan.cost,bent:true},this.tiles,this.trees,new Set(this.flyovers.flatMap(s=>[...s.nodes,...(s.rampClearance||[])]))));this.record(before);this.rebuild();return null;}
   demolish(n){
     const error=this.validate(n,'demolish');if(error)return error;
-    const before=this.snapshot();let value=0;
+    const before=this.actionSnapshot();let value=0;
     const fly=this.flyovers.find(s=>s.nodes.includes(n)||(s.rampClearance||[]).includes(n)),bridge=this.bridges.find(s=>s.nodes.includes(n));
     if(this.tiles[n]==='building'){const b=this.buildingAt(n);value=b?.investment||0;if(b){for(const cell of plotCells(b))this.tiles[cell]='grass';this.buildings=this.buildings.filter(item=>item!==b);}}
     else if(fly){value=fly.cost;this.flyovers=this.flyovers.filter(s=>s!==fly);}
@@ -331,14 +334,14 @@ export class Simulation {
   setToll(node,price){const t=this.tolls.get(node);if(t&&Number.isFinite(price)){const next=Math.max(0,Math.min(this.tollLimit(t),Math.round(price)));if(next===t.price)return;t.baseline=this.stats(node);t.alternativeBefore=this.alternativeStats(node);t.price=next;this.revision++;}}
   removeToll(node){
     const t=this.tolls.get(node);if(!t)return 'No booth to remove.';
-    const before=this.snapshot(),value=B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0);
+    const before=this.actionSnapshot(),value=B.tollPrice+B.boothUpgradePrices.slice(0,t.level-1).reduce((s,v)=>s+v,0);
     this.coins+=Math.round(value*B.refund);this.tolls.delete(node);this.record(before);this.rebuild();return null;
   }
   upgradeBooth(node){
     const t=this.tolls.get(node);if(!t)return 'Select a toll booth first.';
     if(t.level>=5)return 'This booth is already at level 5.';
     const cost=B.boothUpgradePrices[t.level-1];if(this.coins<cost)return `You need ${cost} coins to upgrade this booth.`;
-    const before=this.snapshot();this.coins-=cost;t.level++;if(this.mode==='planner')t.price=this.tollLimit(t);this.record(before);this.revision++;return null;
+    const before=this.actionSnapshot();this.coins-=cost;t.level++;if(this.mode==='planner')t.price=this.tollLimit(t);this.record(before);this.revision++;return null;
   }
   upgradeCost(type){return Math.round(B.upgradeBasePrice*Math.pow(B.upgradePriceMultiplier,this.upgrades[type]||0));}
   buyUpgrade(type){

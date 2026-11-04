@@ -45,7 +45,7 @@ export const growthMethods={
   },
   buildBuilding(n,kind,options={}){
     const error=this.validateBuilding(n,kind,options);if(error)return error;
-    const before=this.snapshot(),spec=BUILDINGS[kind],x=n%B.size,y=Math.floor(n/B.size);
+    const before=this.actionSnapshot(),spec=BUILDINGS[kind],x=n%B.size,y=Math.floor(n/B.size);
     const plot=plannedPlot(n,kind,this.mode),cells=plotCells(plot),clear=!!options.clearTrees;
     this.coins-=spec.price+(clear?cells.reduce((sum,a)=>sum+this.treeRemovalCost(a),0):0);for(const cell of cells){if(clear)this.trees.delete(cell);this.tiles[cell]='building';}this.buildings.push({...plot,type:spec.type,kind,variant:0,level:1,managed:true,investment:spec.price,paint:0,visitors:0,revenue:0});
     if(kind==='office'&&plot.footprint===2)this.buildings.at(-1).parkingCorner=chooseParkingCorner(plot,this.cityConnected);
@@ -58,7 +58,7 @@ export const growthMethods={
     if(this.buildingEntrance(b)===null)return 'Connect this building to a road first.';
     if((b.level||1)>=B.buildingMaxLevel)return 'This building is fully developed.';
     const cost=this.buildingUpgradeCost(b);if(this.coins<cost)return `You need ${cost} coins for this upgrade.`;
-    const before=this.snapshot();this.coins-=cost;b.level=(b.level||1)+1;b.managed=true;b.investment=(b.investment||0)+cost;
+    const before=this.actionSnapshot();this.coins-=cost;b.level=(b.level||1)+1;b.managed=true;b.investment=(b.investment||0)+cost;
     this.record(before);this.rebuild();return null;
   },
   paintBuilding(n,paint){const b=this.buildingAt(n);if(b&&Number.isInteger(paint)&&paint>=0&&paint<5)b.paint=paint;},

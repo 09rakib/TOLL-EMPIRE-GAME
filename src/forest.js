@@ -16,6 +16,6 @@ export const forestMethods={
   clearTreeArea(nodes){
     const trees=[...new Set(nodes)].filter(n=>this.trees.has(n));if(!trees.length)return 'Choose a plot with trees.';
     const cost=trees.reduce((sum,n)=>sum+this.treeRemovalCost(n),0);if(this.coins<cost)return `You need $${cost} to clear these trees.`;
-    const before=this.snapshot();this.coins-=cost;for(const n of trees)this.trees.delete(n);this.record(before);return null;
+    const before=this.actionSnapshot();this.coins-=cost;for(const n of trees)this.trees.delete(n);this.record(before);return null;
   },
 };

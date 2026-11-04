@@ -1,6 +1,16 @@
-# Toll Empire · v0.10.4: explicit underpass vehicle visibility
+# Toll Empire · v0.10.5: smoother traffic and construction
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
+
+## v0.10.5 frame pacing and construction
+
+Cars and pedestrians reuse render entries and projected coordinates; vehicle sprites are resolved only when appearance or direction changes. Pedestrians interpolate between simulation steps, and camera inertia uses pointer timing. HUD text changes only when its value changes. Autosaves coalesce into idle work (with a timeout), while page hide still saves immediately. Previously validated save JSON is reused without repeated parsing; recovery backups remain protected.
+
+Road and tree brush gestures share one undo snapshot and batch network rebuilding once per animation frame or gesture end. Whole-stroke undo retains income earned during construction. No vehicle cap, simulation speed or normal rendering resolution was reduced. Existing saves remain compatible.
+
+The 3× browser benchmark at 390 × 844 and fixed DPR 1.5 (82 buildings, initially 250 cars, 2,112 forest plots, one flyover, 479 measured frames) recorded 59.6 rAF FPS, 5.82 ms mean CPU work, 10.4 ms p95 and three intervals over 25 ms. The initial run on this session recorded 54.5 FPS, 8.23 ms mean and 15.2 ms p95; machine load can affect comparisons. This fixture includes simulation, drawing and satisfaction, not the complete app HUD/storage workload or sustained phone performance. Reproduce with the benchmark command below.
+
+Validation: 126 tests, syntax checks, and all 18 underpass pixel checks pass. The pixel sweep reuses one moving car to catch stale pooled coordinates.
 
 ## v0.10.4 browser underpass visibility regression
 

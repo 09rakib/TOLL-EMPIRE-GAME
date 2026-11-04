@@ -5,6 +5,7 @@ import {plotCells} from './plots.js';
 import {updateRiver} from './river.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
+let lastValidatedRaw=null;
 export function serialize(game){return {version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
 export function migrate(data){
   if(!data||![1,2,3].includes(data.version))return null;
@@ -51,11 +52,11 @@ export const storage={
   legacyBackup(){try{const data=migrate(JSON.parse(localStorage.getItem('toll-empire-v1')));return validateSave(data)?{...data,worldMode:'legacy'}:null;}catch{return null;}},
   load() {
     try {
-      for(const key of [KEY,KEY+'-backup']){try{const data=migrate(JSON.parse(localStorage.getItem(key)));if(validateSave(data))return data;}catch{}}
+      for(const key of [KEY,KEY+'-backup']){try{const raw=localStorage.getItem(key),data=migrate(JSON.parse(raw));if(validateSave(data)){if(key===KEY)lastValidatedRaw=raw;return data;}}catch{}}
       return null;
     } catch {return null;}
   },
   save(game) {
-    try {const existing=localStorage.getItem(KEY);try{if(existing&&validateSave(migrate(JSON.parse(existing))))localStorage.setItem(KEY+'-backup',existing);}catch{}localStorage.setItem(KEY,JSON.stringify(serialize(game)));return true; } catch {return false;}
+    try {const existing=localStorage.getItem(KEY);try{if(existing&&(existing===lastValidatedRaw||validateSave(migrate(JSON.parse(existing)))))localStorage.setItem(KEY+'-backup',existing);}catch{}const json=JSON.stringify(serialize(game));localStorage.setItem(KEY,json);lastValidatedRaw=json;return true; } catch {return false;}
   },
 };
