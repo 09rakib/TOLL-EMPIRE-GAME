@@ -218,3 +218,5 @@ The benchmark runs a deterministic 20-minute developed Planner city and verifies
 The world is 64×64 tiles (4,096 plots), expanded from 40×40. Older saves migrate automatically, remapping road/booth/structure nodes while keeping buildings at their original coordinates. Building levels and district investments are finite, while contracts, events and traffic continue. Long-term retention and low-end Android frame rates have not been measured. Traffic uses a tile-capacity model rather than individual lane changes. This release has no real ads or multiplayer.
 
 Zoom clarity: buildings, trees, road chunks and property grounds now use 4x raster caches, covering the maximum 2.5x zoom at DPR 1.5. Tree branch and foliage highlights add close-up definition. Drawing resolution and save data are unchanged.
+
+Zoom-out performance fix: raster caches adapt to projected zoom (1x/2x/4x); zooming out releases large textures and uses a full-map low-resolution terrain cache to avoid repeated chunk rebuilding. Maximum zoom retains sharp 4x art.
