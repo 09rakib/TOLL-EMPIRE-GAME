@@ -76,3 +76,6 @@ Useful diagnostics:
 
 The owner wants the game to feel smooth and replayable, with a larger city that players can shape over time. Prioritize concrete, usable improvements to city building, traffic readability and mobile performance. They prefer each finished step to be pushed to GitHub. Ask for clarification only when a missing decision materially blocks correct implementation; do not ask again for already-granted Git push authorization.
 
+
+## Zoom clarity follow-up
+Buildings, trees, road chunks and property grounds now cache at 4x for maximum 2.5x zoom with DPR 1.5. Trees include branch and foliage highlights. Save data and normal drawing DPR are unchanged. Browser checks include maximum zoom cache resolution.
