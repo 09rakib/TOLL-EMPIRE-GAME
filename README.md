@@ -220,3 +220,8 @@ The world is 64×64 tiles (4,096 plots), expanded from 40×40. Older saves migra
 Zoom clarity: buildings, trees, road chunks and property grounds now use 4x raster caches, covering the maximum 2.5x zoom at DPR 1.5. Tree branch and foliage highlights add close-up definition. Drawing resolution and save data are unchanged.
 
 Zoom-out performance fix: raster caches adapt to projected zoom (1x/2x/4x); zooming out releases large textures and uses a full-map low-resolution terrain cache to avoid repeated chunk rebuilding. Maximum zoom retains sharp 4x art.
+
+## Mayor Drive
+Build menu > Mayor Drive starts a session-only mayor car at a clear city entrance. Hold Drive or W/Up to accelerate; Brake or S/Down stops. A/Left and D/Right queue road-relative turns at the next available junction. R queues a marked U-turn and E chooses a ground/flyover ramp connection. Traffic, following distance, toll queues and signals remain active; city-owned travel creates no toll receipts. The camera follows the car, with nearby building/district/traffic information. Exit drive restores the previous camera and pause state. Saves retain the city and never persist a temporary driving session.
+
+Validation: 144 tests, 50 application syntax checks and isolated browser entry/control/exit regression. Phone testing and APK refresh remain deferred.

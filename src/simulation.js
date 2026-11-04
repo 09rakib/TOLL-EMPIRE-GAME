@@ -1,3 +1,4 @@
+import {mayorMethods} from './mayor-drive.js';
 import {editingMethods,DECORATIONS} from './city-editing.js';
 import {transitMethods,emptyTransit} from './transit.js';
 import {economyMethods} from './economy.js';
@@ -127,7 +128,7 @@ export class Simulation {
     const node=car.route[car.index];
     if(!this.warming)this.tracker.passage(this.time,node,car.edgeAge*B.tileTravelTime*B.carTilesPerSecond);car.edgeAge=0;
     const booth=this.tolls.get(node);
-    if(booth&&!this.warming&&!car.transitId){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
+    if(booth&&!this.warming&&!car.transitId&&!car.mayor){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
     if(car.index>=car.route.length-1){if(this.mode==='planner'&&!this.warming){car.progress=0;return;}car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}return;}
     if(car.revision!==this.revision){
       if(!this.replanVehicle(car)){car.stranded=true;car.progress=0;}
@@ -142,7 +143,7 @@ export class Simulation {
     if(this.spawnClock>=interval){this.spawnClock=Math.min(this.spawnClock,interval);if(this.mode!=='planner'||this.cars.length<this.trafficBudget()){this.spawnClock-=interval;this.spawn();}}
     if(this.replanClock>=B.replanSeconds){this.replanClock=0;for(const car of this.cars)if(this.random()<B.replanShare)car.revision=-1;}
     this.prepareLeaders();
-    for(let i=this.cars.length-1;i>=0;i--){const car=this.cars[i];car.prevX=car.worldX;car.prevY=car.worldY;if(car.parkingPhase)this.updateOfficeParking(car,dt);else this.advance(car,dt);this.syncCarPosition(car);if(car.done){this.pool.push(car);this.cars.splice(i,1);}}
+    for(let i=this.cars.length-1;i>=0;i--){const car=this.cars[i];car.prevX=car.worldX;car.prevY=car.worldY;if(car.mayor)this.updateMayorCar(car,dt);else if(car.parkingPhase)this.updateOfficeParking(car,dt);else this.advance(car,dt);this.syncCarPosition(car);if(car.done){this.pool.push(car);this.cars.splice(i,1);}}
     this.tracker.update(this.time,this.graph);
     this.businessTracker.trim(this.time);
     while(this.visitEffects.length&&this.visitEffects[0].time<this.time-2)this.visitEffects.shift();
@@ -381,3 +382,5 @@ Object.assign(Simulation.prototype,economyMethods);
 Object.assign(Simulation.prototype,transitMethods);
 
 Object.assign(Simulation.prototype,editingMethods);
+
+Object.assign(Simulation.prototype,mayorMethods);

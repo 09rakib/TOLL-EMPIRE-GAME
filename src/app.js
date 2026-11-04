@@ -1,3 +1,4 @@
+import {setupMayorDrive} from './mayor-drive.js';
 import {setupTransitUI} from './transit-ui.js';
 import {constructionQuote} from './construction.js';
 import {idleTask} from './frame-work.js';
@@ -30,7 +31,7 @@ let movingNode=null;
 let treeNode=null,resumeAfterClear=null,treeArea=[];
 let game=new Simulation(storage.load());
 const renderer=new Renderer($('#map'),$('#mini'),game);renderer.center();
-let tool=null,selected=null,spanStart=null,spanBend=null,bentFlyover=false,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null,transitUI=null;
+let tool=null,selected=null,spanStart=null,spanBend=null,bentFlyover=false,last=performance.now(),accumulator=0,saveClock=0,uiClock=0,toastTimer,resetPending=false,category='city',sliderBaseline=null,cityUI=null,saveTimer=null,manualPaused=false,playSpeed=1,tutorial=null,transitUI=null,mayorDrive=null;
 function hudText(selector,value){const node=$(selector),text=String(value);if(node.textContent!==text)node.textContent=text;}
 const money=n=>Math.floor(n).toLocaleString('en-US'),time=n=>n?`${n.toFixed(1)}s`:'—';
 function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4500);}
@@ -174,6 +175,7 @@ function paintTo(node){
 }
 function local(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
 canvas.addEventListener('pointerdown',e=>{
+  if(game.cars.some(c=>c.mayor))return;
   if(e.button!==0)return;const p=local(e);canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,p);
   renderer.dragging=true;renderer.velocityX=0;renderer.velocityY=0;
   if(pointers.size===2){finishStroke(false);const [a,b]=[...pointers.values()];pinch={distance:Math.hypot(a.x-b.x,a.y-b.y)};if(gesture){gesture.moved=true;gesture.wasPinch=true;}return;}
@@ -253,6 +255,7 @@ $('#reset').onclick=()=>{
   game=new Simulation();renderer.game=game;renderer.dirty=true;renderer.center();configurePlannerUI();closePanel();chooseTool(null);menu(false);save();toast('Empty land, one road. Build your own city.');
 };
 document.addEventListener('keydown',e=>{
+  if(game.cars.some(c=>c.mayor))return;
   if(e.target.matches('input,select,textarea'))return;
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo();return;}
   if(e.key==='Escape'){if(!$('#modal').hidden)menu(false);else{chooseTool(null);closePanel();closeSheets();}}
@@ -260,12 +263,13 @@ document.addEventListener('keydown',e=>{
   if(e.key.toLowerCase()==='b')cityUI.openBoard();if(e.key.toLowerCase()==='c')cityUI.openCustom();if(e.code==='Space'&&!e.target.matches('button')){e.preventDefault();$('#pause-city').click();}
 });
 window.addEventListener('resize',()=>renderer.resize());window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{save();last=performance.now();accumulator=0;});
-function frame(now){const delta=document.hidden?0:Math.min((now-last)/1000,.15);last=now;if(!document.hidden){game.flushStroke();renderer.updateCamera(delta);accumulator+=delta*playSpeed;let steps=0;while(accumulator>=B.fixedStep&&steps<B.maxFrameSteps){game.update(B.fixedStep);accumulator-=B.fixedStep;steps++;}if(steps>=B.maxFrameSteps)accumulator=Math.min(accumulator,B.fixedStep);renderer.draw(game.paused?1:accumulator/B.fixedStep);uiClock+=delta;saveClock+=delta;if(uiClock>.3){updateUI();uiClock=0;}if(saveClock>B.saveSeconds){idleSave.schedule();saveClock=0;}}requestAnimationFrame(frame);}
+function frame(now){const delta=document.hidden?0:Math.min((now-last)/1000,.15);last=now;if(!document.hidden){game.flushStroke();renderer.updateCamera(delta);accumulator+=delta*playSpeed;let steps=0;while(accumulator>=B.fixedStep&&steps<B.maxFrameSteps){game.update(B.fixedStep);accumulator-=B.fixedStep;steps++;}if(steps>=B.maxFrameSteps)accumulator=Math.min(accumulator,B.fixedStep);mayorDrive?.update(delta);renderer.draw(game.paused?1:accumulator/B.fixedStep);uiClock+=delta;saveClock+=delta;if(uiClock>.3){updateUI();uiClock=0;}if(saveClock>B.saveSeconds){idleSave.schedule();saveClock=0;}}requestAnimationFrame(frame);}
 cityUI=setupCityUI({getGame:()=>game,renderer,changed,toast,closeAll:()=>{if(tool)chooseTool(null);closePanel();closeSheets();renderer.selected=null;},beginMove:node=>{movingNode=node;chooseTool('move-building');$('#build-instruction').textContent='Move property | Tap cleared destination | $50';},replaceGame:data=>{game=new Simulation(data);renderer.game=game;renderer.dirty=true;configurePlannerUI();renderer.resize();renderer.center();save();updateUI();}});
 transitUI=setupTransitUI({getGame:()=>game,chooseTool,changed,toast,closeAll:()=>{chooseTool(null);closePanel();closeSheets();}});
 tutorial=setupTutorial({getGame:()=>game,chooseTool,openCityTools:()=>{chooseTool(null);$('#build-sheet').hidden=false;category='city';for(const t of document.querySelectorAll('[data-category]')){t.classList.toggle('active',t.dataset.category===category);t.setAttribute('aria-selected',String(t.dataset.category===category));}renderBuildMenu();},openBoard:()=>cityUI.openBoard(),save:scheduleSave});
 $('#pause-city').onclick=()=>{manualPaused=!manualPaused;game.paused=manualPaused||!$('#modal').hidden;$('#pause-city').textContent=manualPaused?'▶':'Ⅱ';$('#pause-city').setAttribute('aria-label',manualPaused?'Resume city':'Pause city');updateUI();};
 for(const button of document.querySelectorAll('[data-speed]'))button.onclick=()=>{playSpeed=+button.dataset.speed;for(const b of document.querySelectorAll('[data-speed]'))b.classList.toggle('active',b===button);};
+mayorDrive=setupMayorDrive({getGame:()=>game,renderer,toast,closeAll:()=>{chooseTool(null);closePanel();closeSheets();}});
 configurePlannerUI();
 const previousCity=storage.legacyBackup();if(previousCity){const button=document.createElement('button');button.className='text-button';button.textContent='Download previous city backup';button.onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(previousCity,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='toll-empire-previous-city.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};$('.modal').append(button);}
 save();

@@ -81,3 +81,5 @@ The owner wants the game to feel smooth and replayable, with a larger city that 
 Buildings, trees, road chunks and property grounds now cache at 4x for maximum 2.5x zoom with DPR 1.5. Trees include branch and foliage highlights. Save data and normal drawing DPR are unchanged. Browser checks include maximum zoom cache resolution.
 
 Zoom-out lag fix: artwork now selects 1x/2x/4x caches from projected zoom and DPR; changing tiers releases terrain/building/site caches. At 1x the terrain cache holds the complete 64-chunk map to prevent eviction churn. Maximum zoom retains 4x detail.
+
+Mayor Drive added: Build menu > Mayor Drive, road-graph driving with W/S/A/D or arrows, R marked U-turn, E ramp; touch hold controls, follow camera, nearby city information, exit restores camera/pause. Session-only car uses normal traffic rules and produces no toll receipts. Tests cover movement, braking, road-end survival and legal reversal. No new APK build or phone installation.

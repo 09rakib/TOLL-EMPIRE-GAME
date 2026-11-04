@@ -15,7 +15,7 @@ export const plannerMethods={
   addPlannerCar(origin,destination,target=null,kind=null){
     if(origin===destination)return false;const vot=valueOfTime(this.random()),route=this.route(origin,destination,vot);if(!route||route.length<2)return false;
     if(this.cars.some(c=>this.trafficNode(c.route[c.index])===origin&&this.carLaneProgress(c)<.8))return false;
-    const car=this.pool.pop()||{};Object.assign(car,{transitId:null,transitNext:null,transitDwellUntil:null,transitRiders:0,route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination,origin,targetBuilding:target,kind:kind||(this.random()<B.plannerBusChance?'bus':'car'),revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,parkingPhase:null,parkingOffice:null,parkingSlot:null,parkingPaid:false,heading:null,turn:null,stranded:false,blocked:false,exiting:false});
+    const car=this.pool.pop()||{};Object.assign(car,{mayor:false,transitId:null,transitNext:null,transitDwellUntil:null,transitRiders:0,route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination,origin,targetBuilding:target,kind:kind||(this.random()<B.plannerBusChance?'bus':'car'),revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,parkingPhase:null,parkingOffice:null,parkingSlot:null,parkingPaid:false,heading:null,turn:null,stranded:false,blocked:false,exiting:false});
     this.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;this.cars.push(car);return true;
   },
   spawnPlanner(){
