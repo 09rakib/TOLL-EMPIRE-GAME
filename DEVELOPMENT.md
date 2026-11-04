@@ -50,3 +50,6 @@ All six implementation phases are complete. The owner will do the final real-pho
 - `node scripts/render-benchmark.mjs --mobile-dpr --phone-size --speed=3 --flyover --long --city-features`
 - To smoke-test bundled assets, set `TOLL_GAME_ASSETS` to the absolute `android/app/build/generated/gameAssets` directory before running the browser smoke script.
 - Android: use Android Studio JBR and the SDK containing Build Tools 34.0.0, then `./android/gradlew.bat -p android assembleDebug lintDebug --offline --console=plain`.
+
+## v0.11.1 follow-up
+55x55 active map with 64/40-stride migration, original-city archive export and remapped transit/decorations. Normal phone DPR cap 2; low-power cap 1. Validation: 147 tests, 50 syntax checks, high-DPR source/packaged browser checks, successful phone update and live inspection (3,025 plots, canvas 720x1480 at CSS 360x740, 33 buildings). See README and handoff for migration recovery behavior.

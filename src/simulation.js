@@ -28,6 +28,7 @@ export const upgradeTypes={
 export class Simulation {
   constructor(saved=null,random=Math.random) {
     const city=saved||createCity();
+    this.mapArchive=saved?.mapArchive;this.mapResizeNotice=saved?.mapResizeNotice;
     this.mode=saved?(saved.worldMode||'legacy'):'planner';
     this.riverLayout=city.riverLayout||0;
     this.tiles=[...city.tiles];this.buildings=structuredClone(city.buildings);this.coins=saved?.coins??B.startCoins;

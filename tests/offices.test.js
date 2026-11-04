@@ -11,7 +11,7 @@ const run=(g,seconds)=>{for(let i=0;i<seconds/B.fixedStep;i++)g.update(B.fixedSt
 test('L-office reserves four tiles, selects from any cell and orients parking toward its road',()=>{
   const g=city(),n=id(18,21);assert.equal(g.build(n,'office'),null);const b=g.buildingAt(n);assert.equal(b.footprint,2);assert.equal(plotCells(b).length,4);assert.equal(b.parkingCorner,1);assert.equal(parkingCell(b).x,19);
   for(const tile of plotCells(b)){assert.equal(g.buildingAt(tile),b);assert.equal(g.tiles[tile],'building');assert.ok(g.build(tile,'road'));}
-  assert.ok(parkingRoads(b).includes(g.buildingEntrance(b)));assert.ok(g.build(id(63,63),'office'));
+  assert.ok(parkingRoads(b).includes(g.buildingEntrance(b)));assert.ok(g.build(id(54,54),'office'));
 });
 test('parking occupies a real reserved tile and a full footprint validates and restores from save',()=>{
   const g=city();g.build(id(18,21),'office');const saved=serialize(g);assert.ok(validateSave(saved));const restored=new Simulation(saved,()=>.4),b=restored.buildingAt(id(19,22));assert.equal(b.footprint,2);assert.equal(b.parkingCorner,1);assert.equal(restored.tiles[id(19,21)],'building');

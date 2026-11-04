@@ -7,7 +7,7 @@ test('construction quotes match actual cleared purchase and explain invalid site
  const g=new Simulation();g.coins=100000;const n=id(40,40),q=constructionQuote(g,n,'clinic');
  assert.ok(q.valid);assert.match(q.text,/Road needed/);const before=g.coins;
  assert.equal(g.buildBuilding(n,'clinic',{clearTrees:true}),null);assert.equal(before-g.coins,q.cost);
- assert.equal(constructionQuote(g,n,'clinic').valid,false);assert.match(constructionQuote(g,id(63,63),'clinic').text,/inside the city/);
+ assert.equal(constructionQuote(g,n,'clinic').valid,false);assert.match(constructionQuote(g,id(54,54),'clinic').text,/inside the city/);
  g.coins=0;assert.equal(constructionQuote(g,id(35,35),'parking').valid,false);
  assert.equal(constructionQuote(g,-1,'road').valid,false);
 });

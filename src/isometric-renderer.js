@@ -18,8 +18,8 @@ import {polygon,prism,buildingSprite,treeSprite} from './isometric-art.js';
 const T=B.tile,CHUNK=8,CHUNK_LIMIT=24;
 const overlaps=(o,b)=>o.x+o.w>=b.left*T&&o.y+o.h>=b.top*T&&o.x<=(b.right+1)*T&&o.y<=(b.bottom+1)*T;
 export class Renderer extends FlatRenderer{
- constructor(canvas,mini,game){super(canvas,mini,game);this.terrain.width=B.size;this.terrain.height=B.size;this.chunks=new Map();this.sprites=new Map();this.treesArt=[treeSprite(0),treeSprite(1)];this.scene=[];this.hitBodies=[];this.frameCosts=new Float32Array(180);this.costIndex=0;this.resolutionScale=1.5;this.performanceStats={renderMs:0,averageRenderMs:0,visibleObjects:0,groundChunks:0,pixelRatio:this.dpr};}
- resize(){const r=this.canvas.getBoundingClientRect();this.width=r.width;this.height=r.height;this.dpr=this.game.settings.lowPower?1:Math.min(devicePixelRatio||1,this.resolutionScale||1.5);this.canvas.width=Math.round(r.width*this.dpr);this.canvas.height=Math.round(r.height*this.dpr);this.clamp();}
+ constructor(canvas,mini,game){super(canvas,mini,game);this.terrain.width=B.size;this.terrain.height=B.size;this.chunks=new Map();this.sprites=new Map();this.treesArt=[treeSprite(0),treeSprite(1)];this.scene=[];this.hitBodies=[];this.frameCosts=new Float32Array(180);this.costIndex=0;this.resolutionScale=2;this.performanceStats={renderMs:0,averageRenderMs:0,visibleObjects:0,groundChunks:0,pixelRatio:this.dpr};}
+ resize(){const r=this.canvas.getBoundingClientRect();this.width=r.width;this.height=r.height;this.dpr=this.game.settings.lowPower?1:Math.min(devicePixelRatio||1,this.resolutionScale||2);this.canvas.width=Math.round(r.width*this.dpr);this.canvas.height=Math.round(r.height*this.dpr);this.clamp();}
  center(){this.targetZoom=null;this.velocityX=0;this.velocityY=0;this.camera={x:19.5*T,y:20.5*T,zoom:this.width<600?.78:.95};this.clamp();}
  clamp(){const edge=B.size*T;this.camera.x=Math.max(0,Math.min(edge,this.camera.x));this.camera.y=Math.max(0,Math.min(edge,this.camera.y));}
  screenToWorld(x,y){return cameraWorld(x,y,this.camera,this.width,this.height);}

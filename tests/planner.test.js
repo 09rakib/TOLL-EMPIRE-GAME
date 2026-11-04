@@ -67,12 +67,12 @@ test('booth levels enforce 10/20/30/40/50 caps, persist, and undo restores a leg
   }
   g.undo();assert.equal(g.tolls.get(n).level,4);assert.equal(g.tolls.get(n).price,40);
 });
-test('40x40 saves expand to 64x64 preserving structures, coordinates, city money and UI settings',()=>{
+test('40x40 saves expand to 55x55 preserving structures, coordinates, city money and UI settings',()=>{
   const saved=serialize(city()),old=(x,y)=>y*40+x;
   saved.tiles=Array(1600).fill('grass');saved.tiles[old(18,20)]='road';saved.tiles[old(18,19)]='building';saved.tiles[old(19,20)]='road';
   saved.buildings=[{x:18,y:19,type:0,level:2,managed:true,investment:330}];saved.tolls=[[old(18,20),{level:1,price:30,alternativeBefore:{node:old(19,20)}}]];
   saved.flyovers=[{nodes:[old(18,20),old(19,20),old(20,20)],cost:270}];saved.bridges=[{nodes:[old(1,32),old(1,33),old(1,34)],cost:100}];saved.signals=[old(19,20)];saved.coins=1234;saved.settings.hideGoal=true;delete saved.mapSize;
-  const expanded=migrate(saved);assert.ok(validateSave(expanded));assert.equal(expanded.tiles.length,4096);assert.equal(expanded.tiles[id(18,19)],'building');assert.equal(expanded.tiles[id(63,63)],'grass');assert.equal(expanded.coins,1234);
+  const expanded=migrate(saved);assert.ok(validateSave(expanded));assert.equal(expanded.tiles.length,3025);assert.equal(expanded.tiles[id(18,19)],'building');assert.equal(expanded.tiles[id(54,54)],'grass');assert.equal(expanded.coins,1234);
   assert.equal(expanded.tolls[0][0],id(18,20));assert.equal(expanded.tolls[0][1].price,10);assert.equal(expanded.tolls[0][1].alternativeBefore.node,id(19,20));assert.deepEqual(expanded.signals,[id(19,20)]);assert.equal(expanded.flyovers[0].nodes[2],id(20,20));assert.equal(expanded.bridges[0].nodes[1],id(1,33));
   const g=new Simulation(expanded,()=>.4);assert.equal(g.buildingAt(id(18,19)).level,2);assert.equal(g.settings.hideGoal,true);
 });

@@ -1,6 +1,16 @@
-# Toll Empire · v0.11.0: city insights, transit and editing
+# Toll Empire · v0.11.1: city insights, transit and editing
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
+
+## v0.11.1 compact city and phone clarity
+
+The active world is now **55 x 55 tiles (3,025 plots)**, down from 64 x 64. Old node IDs are remapped for roads, tolls, trees, spans, U-turns, decorations and bus routes. Interior buildings retain coordinates, levels and paint. The full original 64 x 64 save is retained in the active save and can be exported from Customize > Download original city. Any outer or boundary-crossing structures remain in that original archive; the active 55 x 55 map shows a notice if this applies. Old 40 x 40 imports also migrate.
+
+Normal rendering now caps at DPR 2 instead of 1.5; explicit low-power mode stays at DPR 1. Zoom-dependent artwork caching remains in place. On the connected phone (DPR 3.5), the canvas increased from 540 x 1110 to 720 x 1480 for the same 360 x 740 CSS viewport.
+
+Validation: 147 tests, 50 syntax checks, source and packaged browser regression including high-DPR canvas validation. The dense zoomed-out 3x browser fixture measured 53.2 rAF FPS at fixed DPR 2 (82 buildings, a flyover, overlay, decorations and an active bus route). This is not a phone frame-rate guarantee.
+
+Android v0.11.1 / code 1101 built, linted and installed in place on the connected phone. Cold launch succeeded; phone inspection confirmed 55 x 55, 3,025 plots, DPR 2 canvas and 33 saved buildings. Local app data was backed up before installation; no data was cleared.
 
 ## v0.11.0 city improvement release
 
@@ -215,7 +225,7 @@ The benchmark runs a deterministic 20-minute developed Planner city and verifies
 
 `src/planner.js` handles visitor demand and receipts; `architecture.js` draws level-specific buildings, tolls and upgrade previews; `balance.js` contains prices and tuning; `simulation.js` handles traffic, construction and undo; `growth.js` handles development; `world.js` creates planner/legacy maps; `storage.js` preserves profiles; `renderer.js` draws the city; `app.js`, `city-ui.js` and `tutorial.js` handle controls and guidance.
 
-The world is 64×64 tiles (4,096 plots), expanded from 40×40. Older saves migrate automatically, remapping road/booth/structure nodes while keeping buildings at their original coordinates. Building levels and district investments are finite, while contracts, events and traffic continue. Long-term retention and low-end Android frame rates have not been measured. Traffic uses a tile-capacity model rather than individual lane changes. This release has no real ads or multiplayer.
+The current world is 55×55 tiles (3,025 plots). Original 64×64 cities are archived during migration. Older saves migrate automatically, remapping road/booth/structure nodes while keeping buildings at their original coordinates. Building levels and district investments are finite, while contracts, events and traffic continue. Long-term retention and low-end Android frame rates have not been measured. Traffic uses a tile-capacity model rather than individual lane changes. This release has no real ads or multiplayer.
 
 Zoom clarity: buildings, trees, road chunks and property grounds now use 4x raster caches, covering the maximum 2.5x zoom at DPR 1.5. Tree branch and foliage highlights add close-up definition. Drawing resolution and save data are unchanged.
 

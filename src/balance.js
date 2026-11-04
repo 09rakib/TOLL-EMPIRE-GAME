@@ -1,10 +1,10 @@
 export const B = Object.freeze({
-  size:64, tile:56, startCoins:1000, maxCars:250, demandPerMinute:100,
+  size:55, tile:56, startCoins:1000, maxCars:250, demandPerMinute:100,
   fixedStep:1/30, spawnInterval:.6, carTilesPerSecond:1.45,
   tileTravelTime:40/12, roadPrice:25, tollPrice:150, maxToll:30, initialToll:10,
   zoomMin:.4, zoomMax:2.5, zoomStep:.2, saveSeconds:15,
   refund:.6, replanSeconds:8, carSpacing:.55,
-  layerOffset:4096, mainPrice:60, bridgePrice:100, flyoverPrice:90,
+  layerOffset:3025, mainPrice:60, bridgePrice:100, flyoverPrice:90,
   signalPrice:120, roundaboutPrice:180, maxBooths:12, maxSpan:14,
   bprA:.65, bprB:4, minSpeedRatio:.18, localCapacity:3, mainCapacity:6,
   busyRatio:.65, jamRatio:1.2, mainSpeed:1.4, flyoverSpeed:1.75,

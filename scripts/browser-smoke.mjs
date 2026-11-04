@@ -20,7 +20,7 @@ try{
  ws=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});
  ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);pending.delete(m.id);if(m.error)p.reject(Error(JSON.stringify(m.error)));else p.resolve(m.result);}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);};
  await send('Runtime.enable');await send('Page.enable');
- const g=new Simulation();g.trees.clear();g.coins=100000;g.campaign.tutorial.done=true;g.build(19*64+14,'home');g.build(21*64+18,'clinic');g.build(40*64+40,'parking');
+ const g=new Simulation();g.trees.clear();g.coins=100000;g.campaign.tutorial.done=true;g.build(19*55+14,'home');g.build(21*55+18,'clinic');g.build(40*55+40,'parking');
  const injection=await send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('toll-empire-planner-v4',${JSON.stringify(JSON.stringify(serialize(g)))});`});
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1.5,mobile:false});
  await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/`});
@@ -48,6 +48,7 @@ try{
    const restoredPoint=await evaluate("import('/src/isometric.js').then(({project})=>{const c=document.querySelector('#map').getBoundingClientRect(),p=project(-3*56,-1*56,20);return {x:c.left+c.width/2+p.x*.78,y:c.top+c.height/2+p.y*.78};})");await click(restoredPoint.x,restoredPoint.y);
    if(!await evaluate("!document.querySelector('#building-panel').hidden&&document.querySelector('#edit-building-note').textContent.includes('90 degrees')"))throw Error('Edited property did not survive offline reload');result.result.value.push('offline reload restores moved and rotated city');await evaluate("document.querySelector('#close-building').click()");
  }
+ await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:3.5,mobile:false});await evaluate("window.dispatchEvent(new Event('resize'))");await delay(100);if(!await evaluate("Math.abs(document.querySelector('#map').width/document.querySelector('#map').clientWidth-2)<.01"))throw Error('High-DPR screen is not rendered at 2x');result.result.value.push('high-DPR phone viewport renders at 2x density');
  await send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false});await delay(100);if(!await evaluate('document.documentElement.scrollWidth<=innerWidth'))throw Error('Desktop overflow');result.result.value.push('desktop layout has no horizontal overflow');
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1.5,mobile:false});await delay(100);
  if(errors.length)throw Error(errors.join('\n'));

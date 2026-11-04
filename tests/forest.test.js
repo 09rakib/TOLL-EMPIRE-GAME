@@ -8,10 +8,10 @@ import {plotCells,plannedPlot} from '../src/plots.js';
 
 test('planner grows a dense persistent forest only on empty grass, including old saves',()=>{
   const g=new Simulation(null,()=>.4);
-  assert.ok(g.trees.size>1800);assert.ok([...g.trees].every(n=>g.tiles[n]==='grass'));
+  assert.ok(g.trees.size>B.size*B.size*.4);assert.ok([...g.trees].every(n=>g.tiles[n]==='grass'));
   const saved=serialize(g);assert.ok(validateSave(saved));delete saved.trees;
   saved.tiles[id(18,19)]='building';saved.buildings.push({x:18,y:19,type:0,managed:true,level:1});
-  const old=new Simulation(saved,()=>.4);assert.ok(old.trees.size>1800);assert.equal(old.trees.has(id(18,19)),false);
+  const old=new Simulation(saved,()=>.4);assert.ok(old.trees.size>B.size*B.size*.4);assert.equal(old.trees.has(id(18,19)),false);
 });
 test('wooded plots block every building and road until the quoted clearing fee is paid',()=>{
   for(const kind of ['home','office','clinic','hotel','park','road','main']){

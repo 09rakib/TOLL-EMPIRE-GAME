@@ -19,7 +19,7 @@ Gameplay is dependency-free JavaScript and Canvas. `src/` is the game source; `i
 
 ## Current project state
 
-- Latest project version: **v0.11.0** (Android version code 1100).
+- Latest project version: **v0.11.1** (Android version code 1101).
 - All six city improvement phases were implemented and pushed independently on `codex/isometric-2-5d`. Consult `git log` for exact commits and verify branch/status before continuing. Detailed behavior and checks are in `DEVELOPMENT.md`.
 - The current visual direction is an isometric 2.5D city. Preserve the established visual style and mobile layout when extending it.
 - Performance work reuses car and walker render entries, interpolates pedestrians and camera movement, avoids redundant HUD text writes, defers/coalesces autosaves while keeping lifecycle saves immediate, and batches road/tree brush graph rebuilds. Whole-stroke undo preserves income earned during construction.
@@ -42,7 +42,7 @@ Only the owner's final real-phone gameplay, touch and sustained-performance vali
 
 ## Key gameplay behavior to preserve
 
-- The city map is a 64×64 tile world with a river, roads, trees, buildings and elevated roads. Construction on cleared grass can start disconnected, including on the far side of the river; city services and traffic activate only when a road/bridge route connects them to the city.
+- The city map is a 55×55 tile world with a river, roads, trees, buildings and elevated roads. Construction on cleared grass can start disconnected, including on the far side of the river; city services and traffic activate only when a road/bridge route connects them to the city.
 - Buildings include multi-tile civic campuses (hospital, police station, parking, supermarket, university), parks, stores, offices and homes. Footprints, tree clearance, costs, placement validation and undo are gameplay rules; consult `src/catalog.js`, `src/plots.js`, `src/growth.js`, and the relevant tests before changing them.
 - Trees can be cleared at a cost. Road/build brushes support dragging and grouped undo. Save compatibility and later income during a grouped stroke matter.
 - Pedestrians should remain on sidewalks. Cars should stay visible through toll booths, parking and under flyover decks; route edits should not make traffic vanish. U-turns require explicit designated markers. Bent flyovers and river bridges are supported.
@@ -89,3 +89,10 @@ Mayor Drive follow-up: smoothed acceleration, braking, corner pose/angle and cam
 Connected-phone update completed at owner request: latest v0.11.0 debug APK built/linted, installed with adb install -r (Success), and cold-launched successfully. App process remained running; sampled AndroidRuntime/Chromium error logs were empty. No app data was cleared. Long-session driving feel remains for owner feedback. Validation: 145 tests and 50 syntax checks plus browser regression.
 
 Building floor/wall fix: draw plinth/foundation before the main prism, preventing its ground top polygon from repainting visible walls. Browser pixel regression samples 165 combinations across 11 building kinds, five paints and three resolution tiers.
+
+## v0.11.1 map and phone clarity update
+Active map reduced to 55x55 (3,025 plots). Migration remaps all stored ground node IDs from 64/40 strides, preserves interior buildings and progress, and archives the full original 64x64 city inside the save for Customize export. Outer or straddling properties remain recoverable from that original archive; the active city shows a notice. Never drop the original archive casually.
+
+Normal DPR cap increased from 1.5 to 2; low-power mode remains 1. Adaptive artwork tiers still avoid oversized zoom-out textures. Read-only phone inspection measured DPR 3.5, CSS 360x740 and canvas 720x1480, confirmed mapSize 55 / 3,025 plots with 33 buildings and a preserved original-city archive. An app WebView storage backup was saved only in OS temp before installation.
+
+147 tests and 50 syntax checks pass; source and exact Android assets pass browser checks including high-DPR density, underpass pixels and Mayor Drive. v0.11.1 code 1101 APK built/linted, installed with -r and cold-launched successfully; sampled AndroidRuntime/Chromium error logs empty. Dense zoom-out browser 3x fixture: 53.2 rAF FPS, mean CPU 6.1 ms, p95 10 ms at DPR 2. No sustained phone FPS claim.

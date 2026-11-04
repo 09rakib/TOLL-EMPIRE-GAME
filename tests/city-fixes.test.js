@@ -38,5 +38,5 @@ test('cars completing a toll trip remain visible while driving out and pay only 
 });
 test('upgraded building bodies fit their own tile and straight river migration preserves city structures',()=>{
   for(let level=1;level<=5;level++){const style=buildingStyle({level});assert.ok(style.height<=40);assert.ok(style.width<=44);}
-  assert.equal(riverCells().size,B.size*2);for(const n of riverCells()){const x=n%B.size,y=Math.floor(n/B.size);assert.ok(y===Math.floor(35-x*.2)||y===Math.floor(35-x*.2)+1);}const g=city(),saved=serialize(g);delete saved.riverLayout;saved.tiles[id(60,5)]='building';saved.buildings.push({x:60,y:5,type:0,managed:true,level:1});const updated=migrate(saved);assert.equal(updated.tiles[id(60,5)],'building');assert.equal(updated.coins,g.coins);assert.ok(validateSave(updated));assert.equal(updated.riverLayout,3);
+  assert.equal(riverCells().size,B.size*2);for(const n of riverCells()){const x=n%B.size,y=Math.floor(n/B.size);assert.ok(y===Math.floor(35-x*.2)||y===Math.floor(35-x*.2)+1);}const g=city(),saved=serialize(g);delete saved.riverLayout;saved.tiles[id(B.size-3,5)]='building';saved.buildings.push({x:B.size-3,y:5,type:0,managed:true,level:1});const updated=migrate(saved);assert.equal(updated.tiles[id(B.size-3,5)],'building');assert.equal(updated.coins,g.coins);assert.ok(validateSave(updated));assert.equal(updated.riverLayout,3);
 });

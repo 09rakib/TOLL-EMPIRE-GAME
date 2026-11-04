@@ -8,16 +8,24 @@ import {updateRiver} from './river.js';
 export const SAVE_KEY='toll-empire-planner-v4';
 const KEY=SAVE_KEY;
 let lastValidatedRaw=null;
-export function serialize(game){return {decorations:game.decorations,transit:game.transit,version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
+export function serialize(game){return {mapResizeNotice:game.mapResizeNotice,mapArchive:game.mapArchive,decorations:game.decorations,transit:game.transit,version:3,mapSize:B.size,uturns:[...game.uturns],riverLayout:game.riverLayout,worldMode:game.mode,tiles:game.tiles,trees:[...game.trees],buildings:game.buildings,tolls:[...game.tolls],coins:game.coins,earned:game.earned,served:game.served,flyovers:game.flyovers,bridges:game.bridges,signals:[...game.signals],upgrades:game.upgrades,campaign:game.campaign,settings:game.settings,simulationTime:game.time,incomePerMinute:game.totalIncome,lastSaved:Date.now()};}
 export function migrate(data){
   if(!data||![1,2,3].includes(data.version))return null;
   if(data.version===1)data={...data,version:2,tolls:data.tolls?.map(([n,t])=>[n,{...t,level:1}]),flyovers:[],bridges:[],signals:[],upgrades:{}};
   if(data.version===2)data={...data,version:3,campaign:createCampaign(null,data.earned||0),settings:createSettings(),simulationTime:0,incomePerMinute:0};
-  // Extend older 40x40 cities without moving plots or losing roads, structures or money.
-  if(data.tiles?.length===1600&&B.size!==40){
-    const remap=n=>Number.isInteger(n)&&n>=0&&n<1600?Math.floor(n/40)*B.size+n%40:-1;
-    const tiles=Array(B.layerOffset).fill('grass');for(let n=0;n<1600;n++)tiles[remap(n)]=data.tiles[n];
-    data={...data,mapSize:B.size,tiles,tolls:data.tolls?.map(([n,t])=>[remap(n),{...t,...(t.alternativeBefore?{alternativeBefore:{...t.alternativeBefore,node:remap(t.alternativeBefore.node)}}:{})}]),signals:data.signals?.map(remap),uturns:data.uturns?.map(remap),flyovers:data.flyovers?.map(s=>({...s,nodes:s.nodes?.map(remap)})),bridges:data.bridges?.map(s=>({...s,nodes:s.nodes?.map(remap)}))};
+  const oldSize=Math.sqrt(data.tiles?.length||0);
+  if([40,64].includes(oldSize)&&oldSize!==B.size){
+    const valid=n=>Number.isInteger(n)&&n>=0&&n<oldSize*oldSize&&n%oldSize<B.size&&Math.floor(n/oldSize)<B.size;
+    const remap=n=>valid(n)?Math.floor(n/oldSize)*B.size+n%oldSize:-1;
+    const outside=(data.buildings||[]).filter(b=>b.x+(b.width||b.footprint||1)>B.size||b.y+(b.height||b.footprint||1)>B.size);
+    const hasOuter=outside.length||(data.tiles||[]).some((t,n)=>!valid(n)&&!['grass','river'].includes(t));
+    const archive=oldSize>B.size?(data.mapArchive||structuredClone(data)):data.mapArchive;
+    const tiles=Array(B.layerOffset).fill('grass');for(let n=0;n<data.tiles.length;n++)if(valid(n))tiles[remap(n)]=data.tiles[n];
+    for(const b of outside)for(let y=b.y;y<b.y+(b.height||b.footprint||1);y++)for(let x=b.x;x<b.x+(b.width||b.footprint||1);x++)if(x<B.size&&y<B.size)tiles[y*B.size+x]='grass';
+    const spans=key=>data[key]?.filter(s=>s.nodes?.every(valid)).map(s=>({...s,nodes:s.nodes.map(remap),...(s.rampClearance?{rampClearance:s.rampClearance.every(valid)?s.rampClearance.map(remap):[],rampSides:s.rampClearance.every(valid)?s.rampSides:[0,0]}:{})}));
+    const stops=data.transit?.stops.filter(valid).map(remap);
+    const removedBridgeCells=new Set((data.bridges||[]).filter(s=>!s.nodes.every(valid)).flatMap(s=>s.nodes.slice(1,-1).filter(valid).map(remap)));for(const n of removedBridgeCells)tiles[n]='river';
+    data={...data,mapArchive:archive,mapResizeNotice:hasOuter?'Outer plots are preserved in Customize > Download original city.':data.mapResizeNotice,mapSize:B.size,tiles,buildings:data.buildings?.filter(b=>!outside.includes(b)),trees:data.trees?.filter(valid).map(remap),decorations:data.decorations?.filter(d=>valid(d.node)).map(d=>({...d,node:remap(d.node)})),tolls:data.tolls?.filter(([n])=>valid(n)&&!removedBridgeCells.has(remap(n))).map(([n,t])=>[remap(n),{...t,...(t.alternativeBefore?{alternativeBefore:{...t.alternativeBefore,node:remap(t.alternativeBefore.node)}}:{})}]),signals:data.signals?.filter(n=>valid(n)&&!removedBridgeCells.has(remap(n))).map(remap),uturns:data.uturns?.filter(n=>valid(n)&&!removedBridgeCells.has(remap(n))).map(remap),flyovers:spans('flyovers'),bridges:spans('bridges'),...(data.transit?{transit:{...data.transit,stops,lines:data.transit.lines.map(l=>({...l,stops:l.stops.filter(valid).map(remap)})).filter(l=>l.stops.length>=2)}}:{})};
   }
   if(data.worldMode==='planner'&&Array.isArray(data.tolls))data={...data,tolls:data.tolls.map(entry=>Array.isArray(entry)&&entry[1]&&Number.isInteger(entry[1].level)&&entry[1].level>=1&&entry[1].level<=5?[entry[0],{...entry[1],price:Math.min(entry[1].price,B.boothTollLimits[entry[1].level-1])}]:entry)};
   return updateRiver(data);

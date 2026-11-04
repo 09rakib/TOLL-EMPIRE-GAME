@@ -1,3 +1,4 @@
+import {B} from './balance.js';
 import {DISTRICTS,districtFor} from './campaign.js';
 import {serviceDistances,serviceRanges} from './city-insights.js';
 const names=['Build two connected homes','Give a home hospital coverage','Welcome 30 new business visitors','Keep traffic flowing for 30 seconds'];
@@ -19,7 +20,7 @@ export const cityGoalMethods={
  updateCityGoals(dt){
    this.goalClock=(this.goalClock||0)+dt;if(this.goalClock<1)return;const elapsed=this.goalClock;this.goalClock=0;
    for(const d of DISTRICTS){const s=goalState(this,d.id);if(s.stage!==3)continue;const homes=this.buildings.filter(b=>b.managed&&b.type===0&&districtFor(b)?.id===d.id&&this.buildingEntrance(b)!==null);
-     const roads=[...this.density].filter(([n,count])=>count>0&&districtFor({x:n%64,y:Math.floor(n/64)})?.id===d.id),active=roads.reduce((sum,[,count])=>sum+count,0);
+     const roads=[...this.density].filter(([n,count])=>count>0&&districtFor({x:n%B.size,y:Math.floor(n/B.size)})?.id===d.id),active=roads.reduce((sum,[,count])=>sum+count,0);
      const flowing=homes.length>=2&&active>=3&&this.campaign.trips-s.tripStart>=10&&roads.every(([n])=>this.congestionAt(n)!=='jammed');s.steady=flowing?Math.min(30,s.steady+elapsed):0;
    }
  },

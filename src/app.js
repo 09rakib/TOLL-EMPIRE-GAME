@@ -273,5 +273,5 @@ mayorDrive=setupMayorDrive({getGame:()=>game,renderer,toast,closeAll:()=>{choose
 configurePlannerUI();
 const previousCity=storage.legacyBackup();if(previousCity){const button=document.createElement('button');button.className='text-button';button.textContent='Download previous city backup';button.onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(previousCity,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='toll-empire-previous-city.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};$('.modal').append(button);}
 save();
-updateUI();if(game.campaign.pendingOffline>0)menu(true);requestAnimationFrame(frame);
+updateUI();if(game.mapResizeNotice)toast(game.mapResizeNotice);if(game.campaign.pendingOffline>0)menu(true);requestAnimationFrame(frame);
 if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
