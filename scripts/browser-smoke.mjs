@@ -39,7 +39,7 @@ try{
  const destination=await evaluate("import('/src/isometric.js').then(({project})=>{const c=document.querySelector('#map').getBoundingClientRect(),p=project(-3*56,-1*56);return {x:c.left+c.width/2+p.x*.78,y:c.top+c.height/2+p.y*.78};})");await click(destination.x,destination.y);
  if(!await evaluate("document.querySelector('#build-guide').hidden&&document.querySelector('#toast').textContent.includes('Property moved')"))throw Error('Move gesture failed');result.result.value.push('physical pointer moves property');
  const pixelFrame=await evaluate("new Promise((resolve,reject)=>{const f=document.createElement('iframe');f.style.cssText='position:fixed;left:-10000px;width:500px;height:700px';f.src='/scripts/underpass-pixel-test.html';f.onload=()=>{const raw=f.contentDocument.body.dataset.pixelResult;if(!raw)reject(Error('Missing pixel result'));else resolve(JSON.parse(raw));f.remove();};document.body.append(f);})");
- if(pixelFrame.failures.length||pixelFrame.checks!==18)throw Error('Underpass pixel regression: '+JSON.stringify(pixelFrame));result.result.value.push('18 underpass pixel positions pass');
+ if(pixelFrame.failures.length||pixelFrame.checks!==18)throw Error('Underpass pixel regression: '+JSON.stringify(pixelFrame));result.result.value.push('18 underpass pixel positions pass');if(pixelFrame.opaqueDeckPaints!==18)throw Error('Flyover was not drawn fully opaque in every underpass frame');result.result.value.push('flyover stays fully opaque with ground cars underneath');
  await delay(800);
  const savedHome=await evaluate("JSON.parse(localStorage.getItem('toll-empire-planner-v4')).buildings.find(b=>b.kind==='home')");if(savedHome.x!==16||savedHome.rotation!==1)throw Error('Edited city was not saved');
  if(!process.env.TOLL_GAME_ASSETS){

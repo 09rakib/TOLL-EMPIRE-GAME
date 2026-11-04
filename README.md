@@ -1,7 +1,19 @@
-# Toll Empire · v0.11.2: distinct civic landmarks
+# Toll Empire · v0.11.3: lighter traffic and opaque flyovers
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
+
+## v0.11.3 traffic pressure and flyover visibility
+
+Private traffic grows more gently: home demand 2.5 → 1.2, business demand 0.35 → 0.25, home fleet contribution 4 → 2 and business contribution 2 → 1. New private trips are spaced at least 1.8 simulation seconds apart, including demand events (previously 0.6 seconds). The private-spawn fleet ceiling is 80, additionally bounded by connected road count (0.8 vehicles/node, minimum road allowance 6) and city development. Random visitor buses are reduced from 15% to 5%; scheduled public bus routes retain their existing behavior.
+
+A destination reserves its actual visitor bays for approaching, entering, parked and departing visitors, so full buildings stop attracting additional private cars. Toll releases recheck downstream space and signal permission before entering the next tile, preventing expired service appointments from jumping into another car. Existing vehicles finish their trips normally; saves, city money, fees and normal vehicle speed are preserved.
+
+Flyovers stay fully opaque when ground traffic passes beneath them. The explicit underpass vehicle redraw remains, with all 18 car-body pixel positions passing and the deck verified at alpha 1 in every sampled frame.
+
+Validation: 152 Node tests, 51 syntax checks, 52 source-browser checks and 51 exact Android-asset browser checks. `node scripts/traffic-pressure.mjs --minutes=60` runs a deterministic narrow city with 115 home levels, maximum traffic upgrade, tourism policy, visitors, a toll and a flyover: peak 17 vehicles, mean 3.9 road vehicles, 1,849 completed trips, 655 toll customers, 619 business visitors and no road vehicle stationary longer than 30 seconds. The final ten minutes complete 314 trips. This is a synthetic simulation, not a measurement of the owner's city or phone FPS.
+
+Android v0.11.3 / code 1103 built and linted (zero errors, three advisory warnings); all 51 bundled source/style/HTML files match root, allowing only the intentional removal of browser service-worker registration. Ignored local APK: `Toll-Empire-v0.11.3-Android.apk`. No phone installation or phone testing for this update.
 
 ## v0.11.2 civic architecture and School
 

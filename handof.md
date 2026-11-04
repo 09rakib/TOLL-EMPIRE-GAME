@@ -19,7 +19,7 @@ Gameplay is dependency-free JavaScript and Canvas. `src/` is the game source; `i
 
 ## Current project state
 
-- Latest project version: **v0.11.2** (Android version code 1102).
+- Latest project version: **v0.11.3** (Android version code 1103).
 - All six city improvement phases were implemented and pushed independently on `codex/isometric-2-5d`. Consult `git log` for exact commits and verify branch/status before continuing. Detailed behavior and checks are in `DEVELOPMENT.md`.
 - The current visual direction is an isometric 2.5D city. Preserve the established visual style and mobile layout when extending it.
 - Performance work reuses car and walker render entries, interpolates pedestrians and camera movement, avoids redundant HUD text writes, defers/coalesces autosaves while keeping lifecycle saves immediate, and batches road/tree brush graph rebuilds. Whole-stroke undo preserves income earned during construction.
@@ -48,7 +48,7 @@ Only the owner's final real-phone gameplay, touch and sustained-performance vali
 - Pedestrians should remain on sidewalks. Cars should stay visible through toll booths, parking and under flyover decks; route edits should not make traffic vanish. U-turns require explicit designated markers. Bent flyovers and river bridges are supported.
 - Parks and businesses provide income; upgrades should visibly change structures and economics. Mayor satisfaction reflects factors such as congestion, tolls and access to services.
 - Existing save format uses `toll-empire-planner-v4` in local storage with versioned migration and a recovery backup. Do not clear or silently replace saves.
-- Current game speed, vehicle limit and normal DPR have intentionally not been secretly lowered for performance. The explicit low-power setting may use a lower pixel ratio.
+- Normal vehicle speed and DPR are preserved. In v0.11.3 the owner explicitly requested lighter road traffic: private spawning now has an 80-vehicle ceiling, a connected-road budget and a 1.8-second minimum interval. The explicit low-power setting may use a lower pixel ratio.
 
 ## Checks and useful diagnostics
 
@@ -103,3 +103,10 @@ Hospital, University and Police Station no longer share one campus layout/palett
 School costs 800 coins, occupies 4x4, has five levels and provides local education at 28 road steps +3 per upgrade. Education uses the better normalized school/university reach at each home. No commercial visits, fees or passive income. School coverage overlay, build icon/menu, inspector, clearing, upgrades, editing, undo and save/load are integrated. Existing save key/schema, buildings and archived original cities remain intact.
 
 Final validation: 149 Node tests; 51 syntax checks; 51 source-browser checks and 50 exact Android-asset browser checks, including 180 wall pixel samples, 18 underpass positions and civic rendering across rotations/paints/zoom tiers. Visual atlas: scripts/civic-showcase.html; capture with node scripts/browser-smoke.mjs --civic-review. v0.11.2 code 1102 APK built/linted (zero errors, three advisory warnings); 51 bundled source/style/HTML files match root. Ignored local APK: Toll-Empire-v0.11.2-Android.apk. No phone installation or on-device testing for this task; do not infer authorization to install from earlier completed phone updates.
+
+## v0.11.3 traffic pressure and flyover opacity
+Owner reported crowded queues and requested fewer cars plus fully visible flyovers. Reduced home/business demand and fleet contributions; private spawn floor 1.8 seconds even during events; private-spawn ceiling 80 with connected-road allowance 0.8 vehicles/node (minimum 6), and random visitor bus chance 5%. Scheduled transit remains intact. Full destinations reserve bays for approaching/parked/departing visitors and reject additional private trips. Toll releases now recheck following distance and signal permission, avoiding overlap when a service timer expires. Existing cars finish naturally; save data, income balances, fees and normal movement speed remain intact.
+
+Flyover fade has been removed. Keep the explicit underpass vehicle redraw: all 18 car pixel positions pass while decks draw at alpha 1. Validation: 152 tests, 51 syntax checks, 52 source-browser checks and 51 exact bundled-asset checks. New scripts/traffic-pressure.mjs 60-minute fixture (115 home levels, max traffic upgrade, tourism, toll and flyover): peak 17 cars, mean 3.9 road cars, 1,849 trips, 655 toll customers, 619 business visitors, 314 trips in final ten minutes, zero road cars stationary over 30 seconds. Standard 60-minute fixture also retains income/trips. Not a phone or owner's-city performance claim.
+
+v0.11.3 code 1103 APK built/linted: zero errors, three advisory warnings; 51 bundled source/style/HTML files match root. Ignored local artifact: Toll-Empire-v0.11.3-Android.apk. No phone installation or on-device testing for this task.

@@ -3,6 +3,7 @@ import {B} from './balance.js';
 import {id} from './world.js';
 import {valueOfTime} from './pathfinder.js';
 import {POLICIES} from './campaign.js';
+import {parkingCapacity} from './campus-art.js';
 import {plotPerimeter} from './plots.js';
 export const buildingKind=b=>b.kind||['home','shop','office','park','clinic','hotel'][b.type];
 export const buildingNames={home:'Home',shop:'Shop',office:'Office',park:'Park',clinic:'Hospital',hotel:'Hotel'};
@@ -10,19 +11,26 @@ export function visitFee(b){return ({parking:6,supermarket:18,police:0,universit
 export function visitCapacity(b){return Math.round(({parking:18,supermarket:36,police:0,university:0,school:0}[b.kind]??B.plannerCapacities[b.type]??0)*Math.pow(B.plannerCapacityGrowth,(b.level||1)-1));}
 export function architectureTier(b){if(b.type===3&&b.footprint===4)return ['City Park','Community Park','Urban Gardens','Grand City Park','Botanical Park'][Math.min(4,(b.level||1)-1)];const tiers={school:['Primary school','Community school','Secondary school','Model school','Grand school campus'],parking:['Open parking','Managed parking','EV parking','Solar parking','Premium parking'],police:['Local station','District station','Police headquarters','Air support station','Metropolitan command'],university:['College','City university','Science campus','Research university','Innovation campus'],supermarket:['Local supermarket','Town supermarket','Superstore','Shopping center','Grand marketplace'],'garage-home':['Cottage with parking','Duplex with parking','Townhouse with parking','Modern home with parking','Luxury home with parking'],home:['Cottage','Duplex','Townhouse','Apartments','Luxury residences'],shop:['Corner shop','Market shop','Boutique','Shopping arcade','Department store'],office:['Small office','Business office','Office block','Glass tower','Corporate headquarters'],clinic:['Local clinic','Community hospital','Medical center','Specialist hospital','Grand medical campus'],hotel:['Guesthouse','City hotel','Boutique hotel','Resort hotel','Grand luxury hotel'],park:['Pocket park','Community garden','City garden','Fountain park','Grand botanical garden']};return (tiers[buildingKind(b)]||tiers.office)[Math.max(0,Math.min(4,(b.level||1)-1))];}
 export const plannerMethods={
-  trafficBudget(){return Math.min(this.settings.lowPower?B.lowPowerCars:B.maxCars,2+this.homeLevels*B.plannerHomeVehicles+this.commercialLevels*2);},
-  plannerInterval(){return Math.max(.6,B.plannerBaseInterval/((1+this.homeLevels*B.plannerHomeDemand+this.commercialLevels*B.plannerBusinessDemand)*(1+this.upgrades.traffic*B.trafficBoostPerLevel)*POLICIES[this.settings.policy].demand*this.cityEconomy().demand*(1-this.transitRelief())));},
+  trafficBudget(){return Math.min(this.settings.lowPower?B.lowPowerCars:B.maxCars,B.plannerMaxCars,Math.max(6,Math.floor(this.cityConnected.size*B.plannerRoadVehicles)),2+this.homeLevels*B.plannerHomeVehicles+this.commercialLevels);},
+  plannerInterval(){return Math.max(B.plannerMinInterval,B.plannerBaseInterval/((1+this.homeLevels*B.plannerHomeDemand+this.commercialLevels*B.plannerBusinessDemand)*(1+this.upgrades.traffic*B.trafficBoostPerLevel)*POLICIES[this.settings.policy].demand*this.cityEconomy().demand*(1-this.transitRelief())));},
   addPlannerCar(origin,destination,target=null,kind=null){
     if(origin===destination)return false;const vot=valueOfTime(this.random()),route=this.route(origin,destination,vot);if(!route||route.length<2)return false;
     if(this.cars.some(c=>this.trafficNode(c.route[c.index])===origin&&this.carLaneProgress(c)<.8))return false;
     const car=this.pool.pop()||{};Object.assign(car,{mayor:false,transitId:null,transitNext:null,transitDwellUntil:null,transitRiders:0,route,index:0,progress:0,vot,color:this.colors[Math.floor(this.random()*this.colors.length)],destination,origin,targetBuilding:target,kind:kind||(this.random()<B.plannerBusChance?'bus':'car'),revision:this.revision,age:0,edgeAge:0,waitingNode:null,serviceAt:0,done:false,parkingPhase:null,parkingOffice:null,parkingSlot:null,parkingPaid:false,heading:null,turn:null,stranded:false,blocked:false,exiting:false});
     this.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;this.cars.push(car);return true;
   },
+  destinationAvailable(node){
+    const b=this.buildingAt(node);if(!b?.managed||b.type===3)return false;
+    const capacity=b.kind==='parking'?parkingCapacity(b):2;
+    let reserved=0;for(const car of this.cars)if(!car.done&&(car.targetBuilding===node||car.parkingOffice===node&&car.parkingPhase)){if(++reserved>=capacity)return false;}
+    return true;
+  },
   spawnPlanner(){
     if(this.cars.length>=this.trafficBudget())return false;
     const ends=this.endpoints;let origin=ends[this.random()<.5?0:1],destination=origin===ends[0]?ends[1]:ends[0],target=null;
     if(this.businessDestinations.length&&this.random()<.75){const site=this.businessDestinations[Math.floor(this.random()*this.businessDestinations.length)];destination=site.node;target=site.building;if(this.homeDestinations.length&&this.random()<.55)origin=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(origin===destination)origin=destination===ends[0]?ends[1]:ends[0];}
     else if(this.homeDestinations.length&&this.random()<.65){destination=this.homeDestinations[Math.floor(this.random()*this.homeDestinations.length)];if(destination===origin)destination=origin===ends[0]?ends[1]:ends[0];const home=this.buildings.find(b=>b.type===0&&this.buildingEntrance(b)===destination);if(home)target=id(home.x,home.y);}
+    if(target!==null&&!this.destinationAvailable(target))return false;
     return this.addPlannerCar(origin,destination,target);
   },
   settleVisit(car){

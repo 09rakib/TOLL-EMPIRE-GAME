@@ -115,6 +115,8 @@ export class Simulation {
     if(car.waitingNode!==null&&car.waitingNode!==undefined){
       if(!this.tolls.has(car.waitingNode)){this.setWaiting(car,null);}
       else if(this.time<car.serviceAt)return;
+      // A toll appointment does not reserve space in the downstream lane.
+      if(!this.signalAllows(current,next)||!this.followingClear(car))return;
     }else{
       const previousProgress=car.progress;car.progress+=dt*B.carTilesPerSecond*this.speedAt(current);this.limitFollowing(car,previousProgress);
       if(car.progress<1)return;
@@ -140,7 +142,7 @@ export class Simulation {
     this.time+=dt;this.spawnClock+=dt;this.replanClock+=dt;
     this.queueCounts??=new Map();this.queueCounts.clear();this.density.clear();for(const c of this.cars){if(c.waitingNode!==null&&c.waitingNode!==undefined)this.queueCounts.set(c.waitingNode,(this.queueCounts.get(c.waitingNode)||0)+1);if(c.parkingPhase&&c.parkingPhase!=='waiting')continue;const n=c.waitingNode??c.route[c.index];this.density.set(n,(this.density.get(n)||0)+1);}
     const event=this.campaign.event?.status==='active'?this.eventSpec():null;
-    const interval=this.mode==='planner'?this.plannerInterval()/(event?.demand||1):B.spawnInterval/((1+this.upgrades.traffic*B.trafficBoostPerLevel)*this.demandBonus*POLICIES[this.settings.policy].demand*(event?.demand||1));
+    const interval=this.mode==='planner'?Math.max(B.plannerMinInterval,this.plannerInterval()/(event?.demand||1)):B.spawnInterval/((1+this.upgrades.traffic*B.trafficBoostPerLevel)*this.demandBonus*POLICIES[this.settings.policy].demand*(event?.demand||1));
     if(this.spawnClock>=interval){this.spawnClock=Math.min(this.spawnClock,interval);if(this.mode!=='planner'||this.cars.length<this.trafficBudget()){this.spawnClock-=interval;this.spawn();}}
     if(this.replanClock>=B.replanSeconds){this.replanClock=0;for(const car of this.cars)if(this.random()<B.replanShare)car.revision=-1;}
     this.prepareLeaders();

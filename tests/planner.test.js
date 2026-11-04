@@ -15,8 +15,8 @@ test('planner begins with empty land, one continuous road, a bus and a car',()=>
   assert.ok(map.tiles.every((t,n)=>t!=='road'||Math.floor(n/B.size)===20));assert.equal(g.cars.length,2);assert.deepEqual(g.cars.map(c=>c.kind).sort(),['bus','car']);assert.equal(g.mode,'planner');assert.equal(g.trafficBudget(),2);assert.equal(g.population,0);
 });
 test('buying and upgrading homes increases residents, traffic supply and visual tier',()=>{
-  const g=city(),n=id(18,21),base=g.plannerInterval();g.coins=10000;g.build(n,'home');assert.equal(g.population,20);assert.equal(g.trafficBudget(),6);assert.ok(g.plannerInterval()<base);
-  const before=buildingStyle(g.buildingAt(n)),tier=architectureTier(g.buildingAt(n));g.upgradeBuilding(n);assert.equal(g.population,40);assert.equal(g.trafficBudget(),10);assert.ok(buildingStyle(g.buildingAt(n)).height>before.height);assert.notEqual(architectureTier(g.buildingAt(n)),tier);
+  const g=city(),n=id(18,21),base=g.plannerInterval();g.coins=10000;g.build(n,'home');assert.equal(g.population,20);assert.equal(g.trafficBudget(),4);assert.ok(g.plannerInterval()<base);
+  const before=buildingStyle(g.buildingAt(n)),tier=architectureTier(g.buildingAt(n));g.upgradeBuilding(n);assert.equal(g.population,40);assert.equal(g.trafficBudget(),6);assert.ok(buildingStyle(g.buildingAt(n)).height>before.height);assert.notEqual(architectureTier(g.buildingAt(n)),tier);
 });
 test('hospital earns nothing while idle, and a real patient arrival credits the receipt',()=>{
   const g=city(),n=id(18,21);g.coins=10000;g.build(n,'clinic');const before=g.coins;g.updateGrowth(600);assert.equal(g.coins,before);
