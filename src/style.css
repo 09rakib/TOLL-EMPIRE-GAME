@@ -72,3 +72,5 @@ html,body{width:100%;height:100%;overscroll-behavior:none;background:#b7cf98}
 .goal-banner{top:calc(105px + env(safe-area-inset-top))}
 
 .overlay-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.overlay-options button{min-height:44px;padding:9px;background:#e4ecd5;border:1px solid #b8cba5;border-radius:8px}.overlay-options button[aria-pressed=true]{background:#f3dda4}
+
+.build-guide{flex-wrap:wrap;justify-content:center}.build-guide>small{flex-basis:100%;font-size:11px;line-height:1.5;max-width:100%;overflow-wrap:anywhere}.build-guide>small[data-state=blocked]{color:#92372d}.build-guide>small[data-state=ready]{color:#236652}

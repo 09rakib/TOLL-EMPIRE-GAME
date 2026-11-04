@@ -7,8 +7,12 @@ Build menu > City overlays offers disconnected roads/buildings, congestion, hosp
 
 Validation: 127 Node tests; 43 syntax checks; 11 isolated Chrome checks at 390x844, no runtime exceptions.
 
+## Phase 2 - Construction feedback (complete)
+The live pointer/touch preview shows footprint, total price including clearing, city-road connection and the real validation error. Span prices come from the same planner used to build them. Existing clearing confirmation and grouped brush undo remain.
+
+Validation: 129 tests, 44 syntax checks, 12 isolated Chrome checks.
+
 ## Remaining phases
-2. Construction quotes, footprints, connection feedback and rejection reasons.
 3. District, service, traffic and visitor objectives.
 4. Bounded satisfaction demand/reward effects and economy playtesting.
 5. Bus stops and actual vehicles following configured routes.
