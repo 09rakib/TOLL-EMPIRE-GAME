@@ -1,4 +1,4 @@
-import {mayorMethods} from './mayor-drive.js';
+import {mayorMethods,smoothMayorPose} from './mayor-drive.js';
 import {editingMethods,DECORATIONS} from './city-editing.js';
 import {transitMethods,emptyTransit} from './transit.js';
 import {economyMethods} from './economy.js';
@@ -129,7 +129,7 @@ export class Simulation {
     if(!this.warming)this.tracker.passage(this.time,node,car.edgeAge*B.tileTravelTime*B.carTilesPerSecond);car.edgeAge=0;
     const booth=this.tolls.get(node);
     if(booth&&!this.warming&&!car.transitId&&!car.mayor){const receipt=booth.price;this.coins+=receipt;this.earned+=receipt;this.campaign.xp+=receipt*B.xpPerCoin;this.served++;this.tracker.payment(this.time,node,receipt);}
-    if(car.index>=car.route.length-1){if(this.mode==='planner'&&!this.warming){car.progress=0;return;}car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}return;}
+    if(car.index>=car.route.length-1){if(this.mode==='planner'&&!this.warming){if(!car.mayor)car.progress=0;return;}car.done=true;if(!this.warming){this.campaign.trips++;this.campaign.xp+=B.xpPerTrip;}return;}
     if(car.revision!==this.revision){
       if(!this.replanVehicle(car)){car.stranded=true;car.progress=0;}
     }
@@ -143,7 +143,7 @@ export class Simulation {
     if(this.spawnClock>=interval){this.spawnClock=Math.min(this.spawnClock,interval);if(this.mode!=='planner'||this.cars.length<this.trafficBudget()){this.spawnClock-=interval;this.spawn();}}
     if(this.replanClock>=B.replanSeconds){this.replanClock=0;for(const car of this.cars)if(this.random()<B.replanShare)car.revision=-1;}
     this.prepareLeaders();
-    for(let i=this.cars.length-1;i>=0;i--){const car=this.cars[i];car.prevX=car.worldX;car.prevY=car.worldY;if(car.mayor)this.updateMayorCar(car,dt);else if(car.parkingPhase)this.updateOfficeParking(car,dt);else this.advance(car,dt);this.syncCarPosition(car);if(car.done){this.pool.push(car);this.cars.splice(i,1);}}
+    for(let i=this.cars.length-1;i>=0;i--){const car=this.cars[i];car.prevX=car.worldX;car.prevY=car.worldY;if(car.mayor)this.updateMayorCar(car,dt);else if(car.parkingPhase)this.updateOfficeParking(car,dt);else this.advance(car,dt);this.syncCarPosition(car);if(car.mayor)smoothMayorPose(car,dt);if(car.done){this.pool.push(car);this.cars.splice(i,1);}}
     this.tracker.update(this.time,this.graph);
     this.businessTracker.trim(this.time);
     while(this.visitEffects.length&&this.visitEffects[0].time<this.time-2)this.visitEffects.shift();
@@ -155,7 +155,7 @@ export class Simulation {
     const from=car.route[car.index],to=car.route[Math.min(car.index+1,car.route.length-1)],a=point(from),b=point(to);let dx=b.x-a.x,dy=b.y-a.y,progress=car.progress;
     if(from!==to&&a.x===b.x&&a.y===b.y){const dir=roadHeading(from,car.route[car.index+2]??from,car.heading??0),angle=(dir??0)*Math.PI/2;car.worldX=a.x+.5-Math.sin(angle)*9/B.tile;car.worldY=a.y+.5+Math.cos(angle)*9/B.tile;car.angle=angle;return;}
     if(car.heading!==undefined&&car.heading!==null&&roadHeading(from,to,car.heading)===(car.heading+2)%4&&this.uturns.has(from)){const angle=car.heading*Math.PI/2;car.worldX=a.x+.5-Math.sin(angle)*9/B.tile;car.worldY=a.y+.5+Math.cos(angle)*9/B.tile;car.angle=angle;return;}
-    if(this.mode==='planner'&&car.index===car.route.length-1){const previous=point(car.route[Math.max(0,car.index-1)]);dx=a.x-previous.x;dy=a.y-previous.y;if(!dx&&!dy){dx=Math.cos(car.angle||0);dy=Math.sin(car.angle||0);}progress*=.9;}
+    if(this.mode==='planner'&&car.index===car.route.length-1){const previous=point(car.route[Math.max(0,car.index-1)]);dx=a.x-previous.x;dy=a.y-previous.y;if(!dx&&!dy){dx=Math.cos(car.angle||0);dy=Math.sin(car.angle||0);}progress=car.mayor?0:progress*.9;}
     car.worldX=a.x+.5+dx*progress-dy*9/B.tile;car.worldY=a.y+.5+dy*progress+dx*9/B.tile;car.angle=Math.atan2(dy,dx);
   }
   get income(){return this.tracker.income;}

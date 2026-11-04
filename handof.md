@@ -83,3 +83,7 @@ Buildings, trees, road chunks and property grounds now cache at 4x for maximum 2
 Zoom-out lag fix: artwork now selects 1x/2x/4x caches from projected zoom and DPR; changing tiers releases terrain/building/site caches. At 1x the terrain cache holds the complete 64-chunk map to prevent eviction churn. Maximum zoom retains 4x detail.
 
 Mayor Drive added: Build menu > Mayor Drive, road-graph driving with W/S/A/D or arrows, R marked U-turn, E ramp; touch hold controls, follow camera, nearby city information, exit restores camera/pause. Session-only car uses normal traffic rules and produces no toll receipts. Tests cover movement, braking, road-end survival and legal reversal. No new APK build or phone installation.
+
+Mayor Drive follow-up: smoothed acceleration, braking, corner pose/angle and camera follow; preserved road-tile movement remainder. Owner authorized updating the connected phone after browser validation.
+
+Connected-phone update completed at owner request: latest v0.11.0 debug APK built/linted, installed with adb install -r (Success), and cold-launched successfully. App process remained running; sampled AndroidRuntime/Chromium error logs were empty. No app data was cleared. Long-session driving feel remains for owner feedback. Validation: 145 tests and 50 syntax checks plus browser regression.

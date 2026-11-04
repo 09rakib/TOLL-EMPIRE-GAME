@@ -1,11 +1,13 @@
 import {B} from './balance.js';
 import {roadHeading} from './pathfinder.js';
 import {districtFor} from './campaign.js';
+export function mayorPose(car,alpha=1){const mix=(a,b)=>a+(b-a)*alpha;return {x:mix(car.drivePrevX??car.prevX,car.driveX??car.worldX),y:mix(car.drivePrevY??car.prevY,car.driveY??car.worldY),angle:mix(car.drivePrevAngle??car.angle,car.driveAngle??car.angle)};}
+export function smoothMayorPose(car,dt){car.drivePrevX=car.driveX??car.prevX;car.drivePrevY=car.driveY??car.prevY;car.drivePrevAngle=car.driveAngle??car.angle;const f=1-Math.exp(-18*dt),delta=Math.atan2(Math.sin(car.angle-car.drivePrevAngle),Math.cos(car.angle-car.drivePrevAngle));car.driveX=car.drivePrevX+(car.worldX-car.drivePrevX)*f;car.driveY=car.drivePrevY+(car.worldY-car.drivePrevY)*f;car.driveAngle=car.drivePrevAngle+delta*f;}
 export const mayorMethods={
  startMayorDrive(){if(this.cars.some(c=>c.mayor))return 'Already exploring.';const start=this.endpoints.find(n=>this.cityConnected.has(n)&&!this.cars.some(c=>c.route[c.index]===n&&c.progress<.8));if(start===undefined)return 'City entrance busy. Try again shortly.';const end=(this.graph.get(start)||[]).find(n=>n<B.layerOffset);if(end===undefined)return 'Connect a road to a city entrance first.';if(!this.addPlannerCar(start,end,null,'car'))return 'Wait for the entrance to clear.';const car=this.cars.at(-1);Object.assign(car,{mayor:true,color:'#f7d35f',driveSpeed:0,steering:0,accelerator:false,brake:false,ramp:false,driveMessage:'Accelerate to explore. Turn commands wait for a junction.'});return null;},
  endMayorDrive(){this.cars=this.cars.filter(c=>!c.mayor);},
  updateMayorCar(car,dt){
-  car.driveSpeed=Math.max(0,Math.min(1.3,car.driveSpeed+dt*(car.brake?-4:car.accelerator?1.3:-1.5)));
+  const target=car.brake?0:car.accelerator?1.3:0;car.driveSpeed+=(target-car.driveSpeed)*(1-Math.exp(-(car.brake?10:car.accelerator?3:4)*dt));if(car.driveSpeed<.01)car.driveSpeed=0;
   const current=car.route[car.index];if(!this.graph.has(current)){car.driveSpeed=0;car.driveMessage='Road removed. Exit drive mode to repair it.';return;}
   if(car.index===car.route.length-1){
    const neighbors=this.graph.get(current)||[],heading=car.heading??0,wanted=(heading+car.steering+4)%4;
@@ -13,7 +15,7 @@ export const mayorMethods={
    if(next===undefined&&car.steering!==2)next=neighbors.find(n=>n%B.layerOffset!==current%B.layerOffset&&roadHeading(current,n,heading)===heading);
    if(next===undefined){car.driveSpeed=0;car.driveMessage='Stopped: choose left/right, R for a marked U-turn, or E for a ramp.';return;}
    if(roadHeading(current,next,heading)===wanted&&car.steering)car.steering=0;
-   car.ramp=false;car.route=[current,next];car.index=0;car.progress=0;car.destination=next;car.revision=this.revision;car.stranded=false;car.blocked=false;
+   car.ramp=false;car.route=[current,next];car.index=0;car.progress=Math.max(0,car.progress);car.destination=next;car.revision=this.revision;car.stranded=false;car.blocked=false;
   }
   if(car.driveSpeed>0){this.advance(car,dt*car.driveSpeed);car.done=false;car.driveMessage=car.waitingNode!==null?'Waiting at toll':car.steering?'Turn queued for next junction':'Exploring your city';}
  },
@@ -28,7 +30,7 @@ export function setupMayorDrive({getGame,renderer,closeAll,toast}){
  const command=key=>{const c=car();if(!c)return;if(key==='left')c.steering=-1;if(key==='right')c.steering=1;if(key==='uturn')c.steering=2;if(key==='ramp')c.ramp=true;if(key==='accelerator'){c.accelerator=true;c.brake=false;}if(key==='brake'){c.brake=true;c.accelerator=false;}};
  for(const b of panel.querySelectorAll('[data-drive]')){b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);command(b.dataset.drive);};b.onpointerup=b.onpointercancel=()=>{const c=car();if(c&&['accelerator','brake'].includes(b.dataset.drive))c[b.dataset.drive]=false;};}
  const keys={ArrowUp:'accelerator',w:'accelerator',ArrowDown:'brake',s:'brake',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',r:'uturn',e:'ramp'};
- document.addEventListener('keydown',e=>{if(!car()||e.target.matches?.('input,textarea,select'))return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();exit();return;}const key=keys[e.key];if(key){e.preventDefault();e.stopImmediatePropagation();command(key);}},{capture:true});
+ document.addEventListener('keydown',e=>{if(!car()||e.target.matches?.('input,textarea,select'))return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();exit();return;}const key=keys[e.key];if(key){if(e.repeat&&!['accelerator','brake'].includes(key)){e.preventDefault();return;}e.preventDefault();e.stopImmediatePropagation();command(key);}},{capture:true});
  document.addEventListener('keyup',e=>{const c=car(),key=keys[e.key];if(c&&['accelerator','brake'].includes(key))c[key]=false;});window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);
- let clock=0;return {update(dt){const c=car();if(!c){if(previous)exit();return;}renderer.camera.x=c.worldX*B.tile;renderer.camera.y=c.worldY*B.tile;renderer.velocityX=0;renderer.velocityY=0;clock+=dt;if(clock<.2)return;clock=0;const n=c.route[c.index]%B.layerOffset,b=getGame().buildings.filter(b=>Math.abs(b.x-c.worldX)+Math.abs(b.y-c.worldY)<5),district=districtFor({x:c.worldX,y:c.worldY});$('#drive-location').textContent=(district?.name||'City outskirts')+' | '+getGame().congestionAt(n)+' traffic | Nearby: '+(b.slice(0,3).map(b=>b.kind||'building').join(', ')||'open land');$('#drive-status').textContent=c.driveMessage;}};
+ let clock=0;return {update(dt,alpha=1){const c=car();if(!c){if(previous)exit();return;}const pose=mayorPose(c,alpha),f=1-Math.exp(-9*Math.min(dt,.05));renderer.camera.x+=(pose.x*B.tile-renderer.camera.x)*f;renderer.camera.y+=(pose.y*B.tile-renderer.camera.y)*f;renderer.velocityX=0;renderer.velocityY=0;clock+=dt;if(clock<.2)return;clock=0;const n=c.route[c.index]%B.layerOffset,b=getGame().buildings.filter(b=>Math.abs(b.x-c.worldX)+Math.abs(b.y-c.worldY)<5),district=districtFor({x:c.worldX,y:c.worldY});$('#drive-location').textContent=(district?.name||'City outskirts')+' | '+getGame().congestionAt(n)+' traffic | Nearby: '+(b.slice(0,3).map(b=>b.kind||'building').join(', ')||'open land');$('#drive-status').textContent=c.driveMessage;}};
 }

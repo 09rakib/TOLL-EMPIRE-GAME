@@ -225,3 +225,5 @@ Zoom-out performance fix: raster caches adapt to projected zoom (1x/2x/4x); zoom
 Build menu > Mayor Drive starts a session-only mayor car at a clear city entrance. Hold Drive or W/Up to accelerate; Brake or S/Down stops. A/Left and D/Right queue road-relative turns at the next available junction. R queues a marked U-turn and E chooses a ground/flyover ramp connection. Traffic, following distance, toll queues and signals remain active; city-owned travel creates no toll receipts. The camera follows the car, with nearby building/district/traffic information. Exit drive restores the previous camera and pause state. Saves retain the city and never persist a temporary driving session.
 
 Validation: 144 tests, 50 application syntax checks and isolated browser entry/control/exit regression. Phone testing and APK refresh remain deferred.
+
+Mayor Drive smoothing: eased acceleration/braking, interpolated vehicle position and shortest-angle steering, preserved movement across road tiles, and damped camera follow. Held turn keys queue one turn without key-repeat requeueing.

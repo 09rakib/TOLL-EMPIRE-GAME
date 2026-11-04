@@ -1,3 +1,4 @@
+import {smoothMayorPose,mayorPose} from '../src/mayor-drive.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation} from '../src/simulation.js';
@@ -8,3 +9,5 @@ test('mayor drives real roads, brakes and exits without changing saves or genera
 test('mayor cannot reverse on unmarked roads or disappear at a road end',()=>{
  const g=new Simulation();g.cars=[];g.spawn=()=>false;g.startMayorDrive();const c=g.cars[0];c.accelerator=true;c.steering=2;for(let i=0;i<1600;i++)g.update(1/30);assert.ok(g.cars.includes(c));assert.equal(c.done,false);assert.equal(c.driveSpeed,0);assert.ok(c.worldX<=32);g.coins=10000;g.build(c.route[c.index],'uturn');c.steering=2;for(let i=0;i<200;i++)g.update(1/30);assert.ok(c.worldX<31.5);
 });
+
+test('mayor pose eases corner jumps and takes the shortest angle across wraparound',()=>{const c={prevX:10,prevY:10,worldX:10.3,worldY:10.2,angle:-Math.PI+.1,driveAngle:Math.PI-.1};smoothMayorPose(c,1/30);assert.ok(c.driveX>10&&c.driveX<10.3);assert.ok(Math.abs(c.driveAngle-c.drivePrevAngle)<.2);const p=mayorPose(c,.5);assert.ok(p.x>10&&p.x<c.driveX);});
