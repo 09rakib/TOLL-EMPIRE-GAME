@@ -19,7 +19,7 @@ Gameplay is dependency-free JavaScript and Canvas. `src/` is the game source; `i
 
 ## Current project state
 
-- Latest project version: **v0.11.3** (Android version code 1103).
+- Latest project version: **v0.11.4** (Android version code 1104).
 - All six city improvement phases were implemented and pushed independently on `codex/isometric-2-5d`. Consult `git log` for exact commits and verify branch/status before continuing. Detailed behavior and checks are in `DEVELOPMENT.md`.
 - The current visual direction is an isometric 2.5D city. Preserve the established visual style and mobile layout when extending it.
 - Performance work reuses car and walker render entries, interpolates pedestrians and camera movement, avoids redundant HUD text writes, defers/coalesces autosaves while keeping lifecycle saves immediate, and batches road/tree brush graph rebuilds. Whole-stroke undo preserves income earned during construction.
@@ -110,3 +110,10 @@ Owner reported crowded queues and requested fewer cars plus fully visible flyove
 Flyover fade has been removed. Keep the explicit underpass vehicle redraw: all 18 car pixel positions pass while decks draw at alpha 1. Validation: 152 tests, 51 syntax checks, 52 source-browser checks and 51 exact bundled-asset checks. New scripts/traffic-pressure.mjs 60-minute fixture (115 home levels, max traffic upgrade, tourism, toll and flyover): peak 17 cars, mean 3.9 road cars, 1,849 trips, 655 toll customers, 619 business visitors, 314 trips in final ten minutes, zero road cars stationary over 30 seconds. Standard 60-minute fixture also retains income/trips. Not a phone or owner's-city performance claim.
 
 v0.11.3 code 1103 APK built/linted: zero errors, three advisory warnings; 51 bundled source/style/HTML files match root. Ignored local artifact: Toll-Empire-v0.11.3-Android.apk. No phone installation or on-device testing for this task.
+
+## v0.11.4 toll booth alignment and visual upgrades
+Owner requested road-dependent booth orientation and visibly larger designs at every level. src/toll-art.js derives horizontal/vertical road axis from current bounded ground-road topology, favoring main-road continuity at crossings. Derived during scene bake, so road changes and old saves adapt automatically. Five growing designs: amber cabin, teal full-road gantry, blue dual-cabin station, navy electronic station, largest solar-roof station. Sprites use existing adaptive caches; inspector current/next previews show the same artwork and actual road axis. No fee, service capacity, investment, tile footprint or save-schema changes.
+
+Keep the new toll-tile car cutaway as well as the existing underpass redraw: larger gantries otherwise hide four of the passing-car regression samples. Validation: 154 tests; 52 syntax checks; 54 source-browser checks and 53 exact APK-asset checks. Includes automatic orientation after road edits/save restoration, increasing unclipped bounds for all five designs across both directions and all three cache tiers, 30 actual toll car pixels and 18 opaque-flyover/underpass positions. Atlas: scripts/toll-showcase.html; capture with node scripts/browser-smoke.mjs --toll-review.
+
+v0.11.4 code 1104 APK built/linted (zero errors, three advisory warnings); all 52 bundled source/style/HTML files match root. Ignored local APK: Toll-Empire-v0.11.4-Android.apk. No phone installation or phone testing for this task.

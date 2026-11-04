@@ -1,7 +1,17 @@
-# Toll Empire · v0.11.3: lighter traffic and opaque flyovers
+# Toll Empire · v0.11.4: road-aware toll booth upgrades
 
 A mobile-friendly city and toll tycoon built with JavaScript and Canvas. The supplied mockups remain in `references/`; game buildings are drawn with Canvas. No runtime dependencies.
 
+
+## v0.11.4 road-aware toll booths
+
+Toll booths now align automatically with east/west or north/south roads. Orientation is derived from current ground-road neighbors on load and after construction; crossings favor the stronger road axis, with main-road priority and deterministic ties. No direction field or save migration is needed.
+
+Each level has a larger silhouette and different equipment: level 1 amber roadside cabin and shade; level 2 teal full-road gantry; level 3 blue dual-cabin station with lane arrows; level 4 taller electronic toll gantry with sensors and illuminated trim; level 5 largest solar-roof station. Cabins/posts stay beside the travel lanes within the existing road tile. Passing cars stay visible through a local cutaway; fees, service capacity, upgrades, saved investment and traffic rules are preserved. The inspector's current/next upgrade preview uses the same oriented artwork as the city.
+
+Validation: 154 Node tests, 52 syntax checks, 54 source-browser checks and 53 exact Android-asset checks. New checks cover orientation after road edits and save restoration, five increasing sprite bounds at both orientations and 1x/2x/4x cache tiers, 30 actual passing-car pixels across all levels/directions, plus the existing 18 opaque-flyover/underpass positions. Reproducible atlas: `scripts/toll-showcase.html`; capture with `node scripts/browser-smoke.mjs --toll-review`.
+
+Android v0.11.4 / code 1104 built and linted (zero errors, three advisory warnings). All 52 bundled source/style/HTML files match root, allowing only the intentional removal of browser service-worker registration. Ignored local APK: `Toll-Empire-v0.11.4-Android.apk`. No phone installation or phone testing for this update.
 
 ## v0.11.3 traffic pressure and flyover visibility
 

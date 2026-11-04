@@ -40,6 +40,8 @@ try{
  if(!await evaluate("document.querySelector('#build-guide').hidden&&document.querySelector('#toast').textContent.includes('Property moved')"))throw Error('Move gesture failed');result.result.value.push('physical pointer moves property');
  const pixelFrame=await evaluate("new Promise((resolve,reject)=>{const f=document.createElement('iframe');f.style.cssText='position:fixed;left:-10000px;width:500px;height:700px';f.src='/scripts/underpass-pixel-test.html';f.onload=()=>{const raw=f.contentDocument.body.dataset.pixelResult;if(!raw)reject(Error('Missing pixel result'));else resolve(JSON.parse(raw));f.remove();};document.body.append(f);})");
  if(pixelFrame.failures.length||pixelFrame.checks!==18)throw Error('Underpass pixel regression: '+JSON.stringify(pixelFrame));result.result.value.push('18 underpass pixel positions pass');if(pixelFrame.opaqueDeckPaints!==18)throw Error('Flyover was not drawn fully opaque in every underpass frame');result.result.value.push('flyover stays fully opaque with ground cars underneath');
+ const tollFrame=await evaluate("new Promise((resolve,reject)=>{const f=document.createElement('iframe');f.style.cssText='position:fixed;left:-10000px;width:500px;height:700px';f.src='/scripts/toll-pixel-test.html';f.onload=()=>{const raw=f.contentDocument.body.dataset.pixelResult;if(!raw)reject(Error('Missing toll pixel result'));else resolve(JSON.parse(raw));f.remove();};document.body.append(f);})");
+ if(tollFrame.failures.length||tollFrame.checks!==30)throw Error('Toll lane pixel regression: '+JSON.stringify(tollFrame));result.result.value.push('30 toll car-body pixels stay visible across all five levels and both directions');
  await delay(800);
  const savedHome=await evaluate("JSON.parse(localStorage.getItem('toll-empire-planner-v4')).buildings.find(b=>b.kind==='home')");if(savedHome.x!==16||savedHome.rotation!==1)throw Error('Edited city was not saved');
  if(!process.env.TOLL_GAME_ASSETS){
@@ -54,10 +56,11 @@ try{
  if(errors.length)throw Error(errors.join('\n'));
  const shot=await send('Page.captureScreenshot',{format:'png'});const screenshot=path.join(profile,'city-smoke.png');await writeFile(screenshot,Buffer.from(shot.data,'base64'));
  console.log(JSON.stringify({passed:result.result.value,viewport:'390x844',screenshot,errors},null,2));
- if(process.argv.includes('--civic-review')){
-  await send('Emulation.setDeviceMetricsOverride',{width:1080,height:1255,deviceScaleFactor:1,mobile:false});
-  await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/scripts/civic-showcase.html`});
-  let ready=false;for(let i=0;i<100;i++){if(await evaluate("document.body?.dataset.ready==='true'")){ready=true;break;}await delay(100);}if(!ready)throw Error('Civic review did not render');
-  const artShot=await send('Page.captureScreenshot',{format:'png'}),artPath=path.join(profile,'civic-review.png');await writeFile(artPath,Buffer.from(artShot.data,'base64'));console.log(JSON.stringify({civicReview:artPath}));
+ if(process.argv.includes('--civic-review')||process.argv.includes('--toll-review')){
+  const review=process.argv.includes('--toll-review')?'toll':'civic',width=review==='toll'?1100:1080,height=review==='toll'?640:1255;
+  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/scripts/${review}-showcase.html`});
+  let ready=false;for(let i=0;i<100;i++){if(await evaluate("document.body?.dataset.ready==='true'")){ready=true;break;}await delay(100);}if(!ready)throw Error(review+' review did not render');
+  const artShot=await send('Page.captureScreenshot',{format:'png'}),artPath=path.join(profile,review+'-review.png');await writeFile(artPath,Buffer.from(artShot.data,'base64'));console.log(JSON.stringify({[review+'Review']:artPath}));
  }
 }catch(e){console.error(e);process.exitCode=1;}finally{clearTimeout(timer);ws?.close();chrome.kill();server.closeAllConnections();server.close();}

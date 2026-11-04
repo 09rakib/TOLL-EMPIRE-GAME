@@ -1,3 +1,4 @@
+import {tollAxis} from './toll-art.js';
 import {setupMayorDrive} from './mayor-drive.js';
 import {setupTransitUI} from './transit-ui.js';
 import {constructionQuote} from './construction.js';
@@ -87,7 +88,7 @@ function updatePanel(){
     const limit=game.tollLimit(booth);$('#toll-slider').max=limit;$('#toll-limit-label').textContent=`${limit} coins max · Level ${booth.level}`;
     $('#toll-plus').disabled=booth.price>=limit;$('#toll-minus').disabled=booth.price<=0;
     $('#booth-upgrade-preview').textContent=`Level ${booth.level}: up to $${limit} per vehicle.${booth.level<5?` Upgrade unlocks $${game.mode==='planner'?B.boothTollLimits[booth.level]:B.maxToll}, raises the rate and increases service capacity.`:' Maximum booth level.'} You receive exactly the posted charge.`;
-    $('#toll-upgrade-preview').hidden=game.mode!=='planner';if(game.mode==='planner')drawUpgradeComparison($('#toll-upgrade-preview'),booth,true);
+    $('#toll-upgrade-preview').hidden=game.mode!=='planner';if(game.mode==='planner')drawUpgradeComparison($('#toll-upgrade-preview'),{...booth,axis:tollAxis(game.tiles,selected)},true);
     const before=booth.baseline||{cars:0,avgTime:0,income:0};
     $('#compare-cars').textContent=`${before.cars} → ${stats.cars} (${stats.cars-before.cars>=0?'+':''}${stats.cars-before.cars})`;
     $('#compare-time').textContent=`${time(before.avgTime)} → ${time(stats.avgTime)}`;

@@ -63,5 +63,15 @@ export async function run(){
  document.querySelector('#more-tools').click();document.querySelector('[data-category="city"]').click();
  assert(document.querySelector('[data-pick-tool="school"]'),'School is available in Build menu');document.querySelector('[data-pick-tool="school"]').click();
  assert(!document.querySelector('#build-guide').hidden,'School can be selected for construction');document.querySelector('#cancel-build').click();
+ const {tollSprite}=await import('/src/toll-art.js');
+ for(let axis=0;axis<2;axis++)for(const scale of [1,2,4]){
+  let previous=0;for(let level=1;level<=5;level++){
+   const a=tollSprite(level,axis,scale),ctx=a.canvas.getContext('2d'),pixels=ctx.getImageData(0,0,a.canvas.width,a.canvas.height).data;
+   let left=a.canvas.width,top=a.canvas.height,right=0,bottom=0;for(let y=0;y<a.canvas.height;y++)for(let x=0;x<a.canvas.width;x++)if(pixels[(y*a.canvas.width+x)*4+3]>100){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);}
+   const area=(right-left)*(bottom-top);if(area<=previous)throw Error('Toll upgrade does not grow at level '+level+' axis '+axis+' scale '+scale);previous=area;
+   if(left===0||top===0||right===a.canvas.width-1||bottom===a.canvas.height-1)throw Error('Clipped toll art');
+  }
+ }
+ assert(true,'all five toll designs grow without sprite clipping in both road directions and all cache tiers');
  return passed;
 }

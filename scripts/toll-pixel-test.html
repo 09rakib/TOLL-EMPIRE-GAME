@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>Toll lane visibility regression</title><style>body{margin:0}canvas{width:500px;height:700px}</style><canvas id="scene"></canvas><canvas id="mini" hidden></canvas><script type="module">
+import {Simulation} from '/src/simulation.js';import {Renderer} from '/src/isometric-renderer.js';import {B} from '/src/balance.js';import {id} from '/src/world.js';
+const g=new Simulation();g.trees.clear();g.coins=100000;g.cars=[];const n=id(18,20);g.build(n,'toll');
+const r=new Renderer(document.querySelector('#scene'),document.querySelector('#mini'),g),failures=[];let checks=0;
+for(let axis=0;axis<2;axis++){
+ if(axis){g.removeRoad(id(17,20));g.removeRoad(id(19,20));g.build(id(18,19),'road');g.build(id(18,21),'road');}
+ for(let level=1;level<=5;level++)for(const offset of [-.3,0,.3]){
+  g.tolls.get(n).level=level;r.dirty=true;const before=offset<0,from=axis?id(18,before?19:20):id(before?17:18,20),to=axis?id(18,before?20:21):id(before?18:19,20),car={route:[from,to],index:0,progress:before?1+offset:offset,heading:axis,angle:axis*Math.PI/2,kind:'car',color:'#e93bed',waitingNode:null,done:false};g.syncCarPosition(car);car.prevX=car.worldX;car.prevY=car.worldY;g.cars=[car];r.camera.x=car.worldX*B.tile;r.camera.y=car.worldY*B.tile;r.camera.zoom=2;r.draw(1);if(r.scene.find(o=>o.kind==='toll').axis!==axis)failures.push({axis,level,error:'Renderer road alignment'});
+  const p=r.worldToScreen(car.worldX*B.tile+(axis?-3:7),car.worldY*B.tile+(axis?7:3),7),pixel=r.ctx.getImageData(Math.round(p.x*r.dpr),Math.round(p.y*r.dpr),1,1).data;checks++;
+  if(Math.abs(pixel[0]-233)>18||Math.abs(pixel[1]-59)>18||Math.abs(pixel[2]-237)>18)failures.push({axis,level,offset,pixel:[...pixel]});
+ }
+}
+document.body.dataset.pixelResult=JSON.stringify({checks,failures});
+</script>
