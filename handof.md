@@ -87,3 +87,5 @@ Mayor Drive added: Build menu > Mayor Drive, road-graph driving with W/S/A/D or 
 Mayor Drive follow-up: smoothed acceleration, braking, corner pose/angle and camera follow; preserved road-tile movement remainder. Owner authorized updating the connected phone after browser validation.
 
 Connected-phone update completed at owner request: latest v0.11.0 debug APK built/linted, installed with adb install -r (Success), and cold-launched successfully. App process remained running; sampled AndroidRuntime/Chromium error logs were empty. No app data was cleared. Long-session driving feel remains for owner feedback. Validation: 145 tests and 50 syntax checks plus browser regression.
+
+Building floor/wall fix: draw plinth/foundation before the main prism, preventing its ground top polygon from repainting visible walls. Browser pixel regression samples 165 combinations across 11 building kinds, five paints and three resolution tiers.

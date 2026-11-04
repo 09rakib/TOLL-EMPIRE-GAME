@@ -5,9 +5,9 @@ const palettes=[['#e8d6b5','#c5aa87','#a78f76'],['#d1e4d5','#9fbfae','#78a18e'],
 export function buildingSprite(body,scale=4){
  const {w,h,z,kind,level,paint=0}=body,minX=-h*.75-5,minY=-z-20,maxX=w*.75+5,maxY=(w+h)*.375+5,canvas=document.createElement('canvas');canvas.width=Math.ceil((maxX-minX)*scale);canvas.height=Math.ceil((maxY-minY)*scale);const c=canvas.getContext('2d');c.scale(scale,scale);c.translate(-minX,-minY);
  const glass=['office','clinic','police','university'].includes(kind),colors=glass&&paint===0?['#c8dfe2','#7fa9bc','#557f99']:palettes[paint];
- prism(c,2,3,w,h,3,['#8b9a8b40','#60766840','#60766840']);prism(c,0,0,w,h,z,colors);
+ prism(c,2,3,w,h,3,['#8b9a8b40','#60766840','#60766840']);
  const trim=kind==='supermarket'||kind==='shop'?'#cf7051':kind==='clinic'?'#398bb9':kind==='police'?'#426a9e':kind==='university'?'#c08a63':palettes[paint][2];
- prism(c,-1,-1,w+2,h+2,3,[trim,trim,trim]);
+ prism(c,-1,-1,w+2,h+2,3,[trim,trim,trim]);prism(c,0,0,w,h,z,colors);
  for(let row=0;row<Math.min(5,level+1);row++){const zz=9+row*(z-16)/Math.min(5,level+1);for(let i=0;i<Math.max(1,Math.floor(w/14));i++){const x=5+i*14;polygon(c,[project(x,h+.2,zz+7),project(x+7,h+.2,zz+7),project(x+7,h+.2,zz),project(x,h+.2,zz)],glass?'#d7eff3':'#6d929d');}for(let i=0;i<Math.max(1,Math.floor(h/14));i++){const y=5+i*14;polygon(c,[project(w+.2,y,zz+7),project(w+.2,y+7,zz+7),project(w+.2,y+7,zz),project(w+.2,y,zz)],glass?'#a8d1e2':'#547786');}}
  // Doors and continuous roof cornice keep the front legible at phone scale.
  if(!(body.rotation||0))polygon(c,[project(w*.43,h+.4,0),project(w*.62,h+.4,0),project(w*.62,h+.4,13),project(w*.43,h+.4,13)],'#36566a');
